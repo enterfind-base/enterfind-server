@@ -118,7 +118,7 @@
 		<dependency>
 			<groupId>software.amazon.awssdk</groupId>
 			<artifactId>s3</artifactId>
-			<version>2.55.1</version>
+			<version>2.55.14</version>
 		</dependency>
 
 		<!-- Cron-utils for cron expression parsing and execution time calculation -->
