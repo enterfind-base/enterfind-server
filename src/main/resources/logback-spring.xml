@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+
+    <!-- Alpha profile: console output (same as default Spring Boot behavior) -->
+    <springProfile name="alpha">
+        <include resource="org/springframework/boot/logging/logback/defaults.xml"/>
+        <include resource="org/springframework/boot/logging/logback/console-appender.xml"/>
+
+        <root level="INFO">
+            <appender-ref ref="CONSOLE"/>
+        </root>
+    </springProfile>
+
+    <!-- All other profiles: log to rotating file in logs/ directory, hourly rotation -->
+    <springProfile name="!alpha">
+        <include resource="org/springframework/boot/logging/logback/defaults.xml"/>
+
+        <!-- LOG_DIR is set by entrypoint.sh: the configured mount if writable,
+             otherwise an internal fallback path so startup never fails on it. -->
+        <appender name="ROLLING_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+            <file>${LOG_DIR:-logs}/enterfind-server.log</file>
+            <encoder>
+                <pattern>${FILE_LOG_PATTERN}</pattern>
+                <charset>${FILE_LOG_CHARSET}</charset>
+            </encoder>
+            <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+                <!-- Rotate hourly, keep 168 hours (7 days) of history -->
+                <fileNamePattern>${LOG_DIR:-logs}/enterfind-server.%d{yyyy-MM-dd_HH}.log</fileNamePattern>
+                <maxHistory>168</maxHistory>
+            </rollingPolicy>
+        </appender>
+
+        <appender name="QUERY_PERF_ROLLING_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+            <file>${LOG_DIR:-logs}/enterfind-query-perf.log</file>
+            <encoder>
+                <pattern>${FILE_LOG_PATTERN}</pattern>
+                <charset>${FILE_LOG_CHARSET}</charset>
+            </encoder>
+            <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+                <!-- Rotate hourly, keep 168 hours (7 days) of history -->
+                <fileNamePattern>${LOG_DIR:-logs}/enterfind-query-perf.%d{yyyy-MM-dd_HH}.log</fileNamePattern>
+                <maxHistory>168</maxHistory>
+            </rollingPolicy>
+        </appender>
+
+        <!-- Route QueryPerformanceEvaluator output to its own file only -->
+        <logger name="enterfind.server.dao.QueryPerformanceEvaluator" level="WARN" additivity="false">
+            <appender-ref ref="QUERY_PERF_ROLLING_FILE"/>
+        </logger>
+
+        <root level="INFO">
+            <appender-ref ref="ROLLING_FILE"/>
+        </root>
+    </springProfile>
+
+</configuration>

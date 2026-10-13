@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Usage - EnterFind</title>
+    <link rel="icon" type="image/png" href="favicon.png">
+    <link rel="stylesheet" href="css/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/dayjs@1/dayjs.min.js"></script>
+    <style>
+        .usage-table {
+            width: 100%;
+            border-collapse: collapse;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .usage-table th,
+        .usage-table td {
+            padding: 0.75rem 1rem;
+            text-align: left;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .usage-table th {
+            background: var(--background);
+            font-weight: 600;
+            color: var(--text-secondary);
+            font-size: 0.875rem;
+            text-transform: uppercase;
+        }
+
+        .usage-table tr:last-child td {
+            border-bottom: none;
+        }
+
+        .usage-table td.num {
+            text-align: right;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .usage-table th.num {
+            text-align: right;
+        }
+
+        .section-title {
+            font-size: 1rem;
+            font-weight: 600;
+            color: var(--text-secondary);
+            margin: 1.5rem 0 0.5rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .empty-note {
+            color: var(--text-muted);
+            font-style: italic;
+            padding: 0.5rem 0;
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="container">
+            <div class="navbar-left">
+                <a href="index.html" class="navbar-brand"><img src="enterfind_logo.jpeg" alt="EnterFind" style="height: 39px; vertical-align: middle;"></a>
+                <span id="server-version" class="navbar-version"></span>
+            </div>
+            <ul class="navbar-nav">
+                <li><a href="index.html">Search</a></li>
+                <li><a href="sources.html">Data Sources</a></li>
+                <li><a href="settings.html">Settings</a></li>
+                <li><a href="users.html">Users</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <!-- Page Header -->
+    <header class="page-header">
+        <div class="container">
+            <h1 class="page-title">Remote Access Usage</h1>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="container">
+        <div id="errorState" class="alert alert-error" style="display: none; margin-top: 1.5rem;"></div>
+
+        <div id="notRemoteState" style="display: none; margin-top: 1.5rem;">
+            <div class="alert" style="background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 1.5rem; color: var(--text-secondary);">
+                Usage data is only available when accessing EnterFind through the remote access proxy.
+            </div>
+        </div>
+
+        <div id="contentContainer" style="padding: 1.5rem 0; display: none;">
+            <div id="loadingState" class="loading"><div class="spinner"></div></div>
+
+            <div id="usageContent" style="display: none;">
+                <p class="section-title">Remote Access Quota</p>
+                <div id="quotaSection"></div>
+
+                <p class="section-title">Days <span id="daysSubtitle" style="font-weight:400; text-transform:none; font-size:0.85rem;"></span></p>
+                <div id="daysSection"></div>
+
+                <p class="section-title">Months <span id="monthsSubtitle" style="font-weight:400; text-transform:none; font-size:0.85rem;"></span></p>
+                <div id="monthsSection"></div>
+
+                <p class="section-title">Years</p>
+                <div id="yearsSection"></div>
+            </div>
+        </div>
+    </main>
+
+    <script type="module">
+        import { $, showAlert } from './js/util.js';
+        import { checkAuthAndRedirect } from './js/auth.js';
+        import { initFooter } from './js/footer.js';
+        import { getRemoteContext, getUrl } from './js/remote.js';
+        import { getRemoteUsage, getRemoteQuota } from './js/api.js';
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            await checkAuthAndRedirect();
+            initFooter();
+
+            const remoteCtx = getRemoteContext();
+            if (!remoteCtx) {
+                $('notRemoteState').style.display = 'block';
+                return;
+            }
+
+            $('contentContainer').style.display = 'block';
+
+            try {
+                const [entries, quota] = await Promise.all([getRemoteUsage(), getRemoteQuota()]);
+                renderQuota(quota);
+                renderUsage(entries);
+            } catch (error) {
+                $('loadingState').style.display = 'none';
+                $('errorState').style.display = 'block';
+                $('errorState').textContent = 'Failed to load usage data: ' + (error?.message || error);
+            }
+        });
+
+        function formatBytes(bytes) {
+            if (bytes === 0) return '0 B';
+            const units = ['B', 'KB', 'MB', 'GB', 'TB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(1024));
+            return (bytes / Math.pow(1024, i)).toFixed(i === 0 ? 0 : 1) + ' ' + units[i];
+        }
+
+        function renderUsage(entries) {
+            $('loadingState').style.display = 'none';
+            $('usageContent').style.display = 'block';
+
+            const now = new Date();
+            const currentYear = now.getFullYear();
+            const currentYearMonth = `${currentYear}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+
+            const days   = entries.filter(e => e.granularity === 'day'   && e.period.startsWith(currentYearMonth));
+            const months = entries.filter(e => e.granularity === 'month' && e.period.startsWith(String(currentYear)));
+            const years  = entries.filter(e => e.granularity === 'year'  && e.period <= String(currentYear));
+
+            const sortEntries = (a, b) =>
+                b.period.localeCompare(a.period) || a.serverId.localeCompare(b.serverId);
+
+            days.sort(sortEntries);
+            months.sort(sortEntries);
+            years.sort(sortEntries);
+
+            const monthLabel = now.toLocaleString('default', { month: 'long', year: 'numeric' });
+            $('daysSubtitle').textContent = `— ${monthLabel}`;
+            $('monthsSubtitle').textContent = `— ${currentYear}`;
+
+            renderTable('daysSection',   days,   ['Server', 'Date',  'Ingress', 'Egress'],
+                p => new Intl.DateTimeFormat(undefined, { year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(p + 'T12:00:00')));
+            renderTable('monthsSection', months, ['Server', 'Month', 'Ingress', 'Egress'],
+                p => dayjs(p + '-01').format('MMMM YYYY'));
+            renderTable('yearsSection',  years,  ['Server', 'Year',  'Ingress', 'Egress']);
+        }
+
+        function renderTable(containerId, rows, headers, fmtPeriod) {
+            const container = $(containerId);
+            if (rows.length === 0) {
+                container.innerHTML = '<p class="empty-note">No data for this period.</p>';
+                return;
+            }
+            const thead = `<thead><tr>
+                <th>${headers[0]}</th>
+                <th>${headers[1]}</th>
+                <th class="num">${headers[2]}</th>
+                <th class="num">${headers[3]}</th>
+            </tr></thead>`;
+            const tbody = rows.map(e => `<tr>
+                <td>${escHtml(e.serverId)}</td>
+                <td>${escHtml(fmtPeriod ? fmtPeriod(e.period) : e.period)}</td>
+                <td class="num">${formatBytes(e.ingressBytes)}</td>
+                <td class="num">${formatBytes(e.egressBytes)}</td>
+            </tr>`).join('');
+            container.innerHTML = `<table class="usage-table">${thead}<tbody>${tbody}</tbody></table>`;
+        }
+
+        function renderQuota(quota) {
+            const container = $('quotaSection');
+            if (!quota) {
+                container.innerHTML = '<p class="empty-note">No quota data available.</p>';
+                return;
+            }
+            const pct = quota.monthlyQuotaPercentUsed != null
+                ? quota.monthlyQuotaPercentUsed.toFixed(1) + '%'
+                : 'N/A';
+            container.innerHTML = `<table class="usage-table"><tbody><tr>
+                <td style="font-weight:500;">Monthly quota used:</td>
+                <td>${escHtml(pct)}</td>
+            </tr></tbody></table>`;
+        }
+
+        function escHtml(str) {
+            return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        }
+    </script>
+</body>
+</html>

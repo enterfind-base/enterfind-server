@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EnterFind - Account Setup</title>
+    <link rel="icon" type="image/png" href="favicon.png">
+    <link rel="stylesheet" href="css/style.css">
+    <style>
+        body {
+            background: var(--background);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 1rem;
+        }
+
+        .setup-container {
+            background: var(--surface);
+            border-radius: 12px;
+            padding: 2rem;
+            max-width: 500px;
+            width: 100%;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .setup-header {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+
+        .setup-header h1 {
+            font-size: 1.5rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .setup-header p {
+            color: var(--text-secondary);
+            margin: 0;
+        }
+
+        .welcome-name {
+            color: var(--primary);
+            font-weight: 600;
+        }
+
+        .section {
+            margin-bottom: 2rem;
+        }
+
+        .section-title {
+            font-size: 1rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .section-title .step-number {
+            background: var(--primary);
+            color: white;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.75rem;
+        }
+
+        .qr-container {
+            text-align: center;
+            margin: 1rem 0;
+        }
+
+        .qr-container img {
+            max-width: 200px;
+            border: 4px solid white;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .recovery-codes {
+            background: var(--background);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 1rem;
+            font-family: monospace;
+            margin: 1rem 0;
+        }
+
+        .recovery-codes code {
+            display: inline-block;
+            padding: 0.25rem 0.5rem;
+            margin: 0.25rem;
+            background: var(--surface);
+            border-radius: 4px;
+            font-size: 0.875rem;
+        }
+
+        .warning-box {
+            background: #fef3c7;
+            border: 1px solid #f59e0b;
+            border-radius: 8px;
+            padding: 1rem;
+            margin: 1rem 0;
+            color: #92400e;
+        }
+
+        .warning-box strong {
+            display: block;
+            margin-bottom: 0.5rem;
+        }
+
+        .error-container {
+            text-align: center;
+            padding: 2rem;
+        }
+
+        .error-icon {
+            font-size: 4rem;
+            margin-bottom: 1rem;
+        }
+
+        .error-message {
+            color: #dc2626;
+            font-weight: 500;
+            margin-bottom: 1rem;
+        }
+
+        .error-info {
+            color: var(--text-secondary);
+            font-size: 0.875rem;
+        }
+
+        .loading-container {
+            text-align: center;
+            padding: 3rem;
+        }
+
+        .copy-btn {
+            display: block;
+            width: 100%;
+            margin-top: 0.5rem;
+        }
+
+        .setup-complete-note {
+            background: #dcfce7;
+            border: 1px solid #22c55e;
+            border-radius: 8px;
+            padding: 1rem;
+            margin-top: 1.5rem;
+            color: #166534;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="setup-container">
+        <!-- Loading State -->
+        <div id="loadingState" class="loading-container">
+            <div class="spinner"></div>
+            <p>Loading setup information...</p>
+        </div>
+
+        <!-- Error State -->
+        <div id="errorState" style="display: none;">
+            <div class="error-container">
+                <div class="error-icon">&#9888;</div>
+                <p class="error-message">This setup link has already been used or has expired.</p>
+                <p class="error-info">Please contact your administrator to request a new setup link.</p>
+            </div>
+        </div>
+
+        <!-- Setup Content -->
+        <div id="setupContent" style="display: none;">
+            <div class="setup-header">
+                <img src="enterfind_logo.jpeg" alt="EnterFind" style="height: 48px; margin-bottom: 1rem;">
+                <h1>Welcome, <span id="userNickname" class="welcome-name"></span></h1>
+                <p>Complete your account setup by following the steps below.</p>
+            </div>
+
+            <div class="section">
+                <div class="section-title">
+                    <span class="step-number">1</span>
+                    Set up your authenticator app
+                </div>
+                <p>Scan this QR code with your authenticator app (Google Authenticator, Authy, Microsoft Authenticator, etc.):</p>
+                <div class="qr-container">
+                    <img id="qrCodeImg" src="" alt="QR Code">
+                </div>
+                <p style="font-size: 0.875rem; color: var(--text-secondary); margin-top: 1rem;">
+                    <strong>Can't scan QR codes?</strong> Enter this secret key manually:
+                </p>
+                <div style="background: var(--background); border: 1px solid var(--border); border-radius: 8px; padding: 1rem; margin: 1rem 0; font-family: monospace; text-align: center; word-break: break-all;">
+                    <code id="totpSecret" style="font-size: 1.1rem; letter-spacing: 0.1em;"></code>
+                </div>
+                <button id="copySecretBtn" class="btn btn-secondary copy-btn">Copy Secret</button>
+            </div>
+
+            <div class="section">
+                <div class="section-title">
+                    <span class="step-number">2</span>
+                    Save your recovery codes
+                </div>
+                <div class="warning-box">
+                    <strong>Important!</strong>
+                    Save these recovery codes in a secure location. Each code can only be used once.
+                    If you lose access to your authenticator app, you will need these codes to log in.
+                    <br><br>
+                    <strong>You will NOT be able to see these codes again after leaving this page.</strong>
+                </div>
+                <div class="recovery-codes" id="recoveryCodes">
+                    <!-- Codes will be inserted here -->
+                </div>
+                <button id="copyCodesBtn" class="btn btn-secondary copy-btn">Copy All Codes</button>
+            </div>
+
+            <div class="setup-complete-note">
+                <strong>Setup Complete!</strong><br>
+                Once you have scanned the QR code and saved your recovery codes, you can close this page and log in to EnterFind.
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { getUserSetup } from './js/auth.js';
+
+        const $ = (id) => document.getElementById(id);
+
+        async function init() {
+            // Get token from URL
+            const urlParams = new URLSearchParams(window.location.search);
+            const token = urlParams.get('token');
+
+            if (!token) {
+                showError();
+                return;
+            }
+
+            try {
+                const setupInfo = await getUserSetup(token);
+
+                if (setupInfo.alreadyUsed) {
+                    showError();
+                    return;
+                }
+
+                // Display setup info
+                $('userNickname').textContent = setupInfo.nickname;
+                $('qrCodeImg').src = setupInfo.qrCodeDataUrl;
+                $('totpSecret').textContent = setupInfo.totpSecret;
+
+                // Display recovery codes
+                $('recoveryCodes').innerHTML = setupInfo.recoveryCodes
+                    .map(code => `<code>${code}</code>`)
+                    .join(' ');
+
+                // Show setup content
+                $('loadingState').style.display = 'none';
+                $('setupContent').style.display = 'block';
+
+                // Setup copy secret button
+                $('copySecretBtn').addEventListener('click', () => {
+                    navigator.clipboard.writeText(setupInfo.totpSecret);
+                    $('copySecretBtn').textContent = 'Copied!';
+                    setTimeout(() => $('copySecretBtn').textContent = 'Copy Secret', 2000);
+                });
+
+                // Setup copy codes button
+                $('copyCodesBtn').addEventListener('click', () => {
+                    navigator.clipboard.writeText(setupInfo.recoveryCodes.join('\n'));
+                    $('copyCodesBtn').textContent = 'Copied!';
+                    setTimeout(() => $('copyCodesBtn').textContent = 'Copy All Codes', 2000);
+                });
+            } catch (error) {
+                console.error('Failed to load setup info:', error);
+                showError();
+            }
+        }
+
+        function showError() {
+            $('loadingState').style.display = 'none';
+            $('errorState').style.display = 'block';
+        }
+
+        init();
+    </script>
+</body>
+</html>

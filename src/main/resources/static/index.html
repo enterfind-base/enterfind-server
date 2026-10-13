@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EnterFind - Search</title>
+    <link rel="icon" type="image/png" href="favicon.png">
+    <link rel="stylesheet" href="css/style.css">
+    <link href="https://cdn.jsdelivr.net/npm/tom-select@2.4.3/dist/css/tom-select.css" rel="stylesheet">
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="container">
+            <div class="navbar-left">
+                <a href="index.html" class="navbar-brand"><img src="enterfind_logo.jpeg" alt="EnterFind" style="height: 39px; vertical-align: middle;"></a>
+                <span id="server-version" class="navbar-version"></span>
+            </div>
+            <ul class="navbar-nav">
+                <li><a href="index.html" class="active">Search</a></li>
+                <li><a href="sources.html">Data Sources</a></li>
+                <li><a href="settings.html">Settings</a></li>
+                <li><a href="users.html">Users</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <!-- Search Header -->
+    <header class="search-header">
+        <div class="container">
+            <div class="search-box">
+                <input type="text" id="searchInput" class="form-input" placeholder="Search files and folders — &quot;quote&quot; for an exact phrase" autofocus>
+                <button id="clearSearchBtn" class="btn btn-secondary" title="Clear search" style="display: none;">×</button>
+                <button id="searchBtn" class="btn btn-primary">Search</button>
+                <button id="savedBtn" class="btn btn-secondary" title="Saved queries">Saved</button>
+                <button id="aiAssistBtn" class="btn btn-secondary" title="AI-assisted search" style="display: none;">AI: Assist</button>
+            </div>
+            
+            <!-- Active Conditions -->
+            <div class="conditions-container">
+                <div id="conditionsList" class="conditions-list"></div>
+                
+                <button id="toggleAddCondition" class="btn btn-secondary btn-sm" style="margin-top: 0.75rem;">
+                    + Add Condition
+                </button>
+                
+                <!-- Add Condition Panel -->
+                <div id="addConditionPanel" class="add-condition-panel">
+                    <form id="addConditionForm" class="add-condition-form">
+                        <div class="form-group">
+                            <label class="form-label">Field</label>
+                            <input id="conditionField" type="text" placeholder="Select field..." style="width: 150px;" />
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Operation</label>
+                            <select id="conditionOperation" class="form-select" style="width: 120px;">
+                                <option value="LIKE">Contains</option>
+                                <option value="NOT_LIKE">Does Not Contain</option>
+                                <option value="EQUAL">Equals</option>
+                                <option value="NOT_EQUAL">Not Equal</option>
+                                <option value="LESS">Less Than</option>
+                                <option value="GREATER">Greater Than</option>
+                            </select>
+                        </div>
+                        <div class="form-group" style="flex: 1;">
+                            <label class="form-label">Value</label>
+                            <input type="text" id="conditionValue" class="form-input" placeholder="Words, or &quot;an exact phrase&quot;...">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">&nbsp;</label>
+                            <button type="submit" class="btn btn-primary">Add</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="container">
+        <div class="search-content">
+            <!-- Facets Sidebar -->
+            <aside class="facets-sidebar" id="facetsSidebar">
+                <div class="facet-selector">
+                    <label class="form-label">Filter by</label>
+                    <input id="facetSelect" type="text" placeholder="Select a facet..." />
+                </div>
+                <div id="facetKeysError" style="display:none;" class="alert alert-error"></div>
+                <div id="facetValues" class="facet-values">
+                    <!-- Facet values will be dynamically populated -->
+                </div>
+            </aside>
+
+            <!-- Results Section -->
+            <section class="results-section">
+                <div class="results-header">
+                    <span id="resultsCount" class="results-count">Enter a search term to begin</span>
+                    <div class="results-controls">
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="showPreviews">
+                            Previews
+                        </label>
+                        <div class="sort-control">
+                            <label for="sortDirection">Sort by modified:</label>
+                            <select id="sortDirection" class="form-select form-select-sm">
+                                <option value="DESC">Newest First</option>
+                                <option value="ASC">Oldest First</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                
+                <div id="resultsLoading" class="loading" style="display: none;">
+                    <div class="spinner"></div>
+                </div>
+                
+                <div id="resultsList" class="results-list">
+                    <div class="empty-state">
+                        <div class="empty-state-icon">🔍</div>
+                        <div class="empty-state-title">Start Searching</div>
+                        <p>Enter a search term or add conditions to find your files.</p>
+                    </div>
+                </div>
+
+                <!-- Pagination -->
+                <div id="pagination" class="pagination" style="display: none;">
+                    <button id="prevPage" class="pagination-btn" disabled>← Previous</button>
+                    <span id="pageInfo" class="pagination-info">Page 1</span>
+                    <button id="nextPage" class="pagination-btn">Next →</button>
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <!-- AI Assist Modal -->
+    <div id="aiAssistModal" class="ai-modal" style="display: none;">
+        <div class="ai-modal-content">
+            <div class="ai-modal-header">
+                <h3>AI Search Assistant</h3>
+                <button class="ai-modal-close" id="closeAiModal">&times;</button>
+            </div>
+            <div class="ai-modal-body">
+                <p>Describe what you're looking for in plain language:</p>
+                <textarea id="aiQueryInput" class="form-input" rows="3" 
+                          placeholder="e.g., PDF documents containing 'budget' not in archive folder"></textarea>
+                <div id="aiInterpretation" class="ai-interpretation" style="display: none;">
+                    <h4>Interpreted as:</h4>
+                    <div id="aiExplanation" class="ai-explanation"></div>
+                    <div id="aiPreview" class="ai-preview"></div>
+                </div>
+                <div id="aiLoading" class="ai-loading" style="display: none;">
+                    <div class="spinner"></div>
+                    <span>Interpreting query...</span>
+                </div>
+            </div>
+            <div class="ai-modal-footer">
+                <button id="aiInterpretBtn" class="btn btn-primary">Interpret</button>
+                <button id="aiApplyBtn" class="btn btn-success" style="display: none;">Apply Search</button>
+                <button id="aiCancelBtn" class="btn btn-secondary">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Saved Queries Modal -->
+    <div id="savedQueriesModal" class="ai-modal" style="display: none;">
+        <div class="ai-modal-content" style="max-width: 800px;">
+            <div class="ai-modal-header">
+                <h3>Saved Queries</h3>
+                <button class="ai-modal-close" id="closeSavedModal">&times;</button>
+            </div>
+            <div class="ai-modal-body">
+                <div id="savedQueriesList" class="saved-queries-list">
+                    <div class="loading" id="savedQueriesLoading">
+                        <div class="spinner"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="ai-modal-footer">
+                <button id="saveCurrentBtn" class="btn btn-primary">Save Current Query</button>
+                <button id="closeSavedBtn" class="btn btn-secondary">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/tom-select@2.4.3/dist/js/tom-select.complete.min.js"></script>
+    <script type="module" src="js/search.js"></script>
+    <script type="module">
+        import { checkAuthAndRedirect } from './js/auth.js';
+        import { initFooter } from './js/footer.js';
+        import { fetchServerTimezone } from './js/api.js';
+        await checkAuthAndRedirect();
+        initFooter();
+        // Fetch server timezone for proper date formatting
+        fetchServerTimezone();
+    </script>
+</body>
+</html>

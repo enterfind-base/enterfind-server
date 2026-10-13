@@ -1,0 +1,17 @@
+# Ignore build artifacts and IDE files
+target/
+.git/
+.gitignore
+*.log
+.DS_Store
+.vscode/
+node_modules/
+*.tmp
+*.bak
+
+# Keep only essential files for the container build
+!src/
+!pom.xml
+!database/
+!*.md
+!*.sh

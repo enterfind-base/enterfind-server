@@ -1,0 +1,809 @@
+scalar Long
+
+type Query {
+    about: About!
+    availableTreatments: [TreatmentInfo!]!
+    dataSources(token: String): [DataSource!]!
+    dataSource(token: String, name: String!, type: DataSourceType!): DataSource
+    dataSourceStats(token: String, name: String!, type: DataSourceType!): DataSourceStats
+    dataSourceTreatments(token: String, dataSourceName: String!, dataSourceType: DataSourceType!): [DataSourceTreatment!]!
+    testDataSource(token: String, name: String!, type: DataSourceType!): TestDataSourceResult!
+    """
+    Search for items. All supplied filters are ANDed together.
+
+    `name` and `folder` match the item's own name and path directly, as substrings.
+    `searchConditions` filter on treatment-produced attributes. `searchString` searches
+    every attribute at once — see its own description for how the two differ.
+    """
+    search(
+        token: String,
+        searchConditions: [SearchConditionInput!],
+        "Substring match on the item's own file name."
+        name: String,
+        "Substring match on the item's own folder path."
+        folder: String,
+        """
+        Free-text search across **every** attribute of an item, in both metadata and
+        document text.
+
+        Whitespace separates terms, and a term wrapped in double quotes is a phrase. An
+        item matches when **every** term is found somewhere on it — each term may be
+        satisfied from metadata or from document text independently of where the others
+        were found, so `invoice 2024` matches a file named `invoice.pdf` whose text
+        mentions 2024.
+
+        This is the scope difference from a `LIKE` condition, which requires its terms to
+        share one value of one named key.
+
+        Unquoted terms are **prefix**-matched against document text: `distribut` finds
+        "distributed" and "distribution". Prefix matching is deliberately not available on
+        `LIKE` conditions, which are exact field filters rather than a type-ahead box.
+
+        Quote a term to require it contiguous and in order. Quoting is the only way to ask
+        for adjacency, and it is the expensive option — a common phrase can take seconds.
+
+        Limits worth knowing:
+        * A term of one or two characters matches **document text only**, not metadata. No
+          index can serve so short a pattern against metadata.
+        * There is no mid-token substring search in document text; `tribut` finds nothing.
+          Use a prefix instead.
+
+        Operators are not supported: `( ) & | ! : * < > ' \\` are rejected.
+        """
+        searchString: String,
+        skip: Int,
+        howmany: Int,
+        sortDirection: SortDirection): SearchResult!
+    itemAttributes(token: String, dataSourceName: String!, dataSourceType: DataSourceType!, name: String!, folder: String, keyNames: [String!]): [ItemAttribute!]!
+    itemAttributeKeys(token: String): [String!]!
+    """
+    Attribute keys present on the items matching these filters. Filters have exactly the
+    same meaning as on `search`.
+    """
+    availableItemAttributeKeys(
+        token: String,
+        searchConditions: [SearchConditionInput!],
+        name: String,
+        folder: String,
+        """
+        Free-text search across **every** attribute of an item, in both metadata and
+        document text.
+
+        Whitespace separates terms, and a term wrapped in double quotes is a phrase. An
+        item matches when **every** term is found somewhere on it — each term may be
+        satisfied from metadata or from document text independently of where the others
+        were found, so `invoice 2024` matches a file named `invoice.pdf` whose text
+        mentions 2024.
+
+        This is the scope difference from a `LIKE` condition, which requires its terms to
+        share one value of one named key.
+
+        Unquoted terms are **prefix**-matched against document text: `distribut` finds
+        "distributed" and "distribution". Prefix matching is deliberately not available on
+        `LIKE` conditions, which are exact field filters rather than a type-ahead box.
+
+        Quote a term to require it contiguous and in order. Quoting is the only way to ask
+        for adjacency, and it is the expensive option — a common phrase can take seconds.
+
+        Limits worth knowing:
+        * A term of one or two characters matches **document text only**, not metadata. No
+          index can serve so short a pattern against metadata.
+        * There is no mid-token substring search in document text; `tribut` finds nothing.
+          Use a prefix instead.
+
+        Operators are not supported: `( ) & | ! : * < > ' \\` are rejected.
+        """
+        searchString: String): [String!]!
+    standardFields: [String!]!
+    """
+    Value counts for one attribute key across the items matching these filters. Filters
+    have exactly the same meaning as on `search`.
+    """
+    getFacets(
+        token: String,
+        "Attribute key to break down by."
+        key: String!,
+        searchConditions: [SearchConditionInput!],
+        name: String,
+        folder: String,
+        """
+        Free-text search across **every** attribute of an item, in both metadata and
+        document text.
+
+        Whitespace separates terms, and a term wrapped in double quotes is a phrase. An
+        item matches when **every** term is found somewhere on it — each term may be
+        satisfied from metadata or from document text independently of where the others
+        were found, so `invoice 2024` matches a file named `invoice.pdf` whose text
+        mentions 2024.
+
+        This is the scope difference from a `LIKE` condition, which requires its terms to
+        share one value of one named key.
+
+        Unquoted terms are **prefix**-matched against document text: `distribut` finds
+        "distributed" and "distribution". Prefix matching is deliberately not available on
+        `LIKE` conditions, which are exact field filters rather than a type-ahead box.
+
+        Quote a term to require it contiguous and in order. Quoting is the only way to ask
+        for adjacency, and it is the expensive option — a common phrase can take seconds.
+
+        Limits worth knowing:
+        * A term of one or two characters matches **document text only**, not metadata. No
+          index can serve so short a pattern against metadata.
+        * There is no mid-token substring search in document text; `tribut` finds nothing.
+          Use a prefix instead.
+
+        Operators are not supported: `( ) & | ! : * < > ' \\` are rejected.
+        """
+        searchString: String): [FacetValue!]!
+
+    # User settings
+    userSetting(token: String, settingName: String!): UserSetting
+    userSettings(token: String): [UserSetting!]!
+    aiSettings(token: String): [UserSetting!]!
+    aiProvider(token: String): AiProvider!
+
+    # Face embedding model (instance-global; lives in SYSTEM_SETTINGS, not exposed via userSettings)
+    faceEmbeddingModel(token: String): FaceEmbeddingModelStatus!
+
+    # Authentication
+    isAuthenticationRequired: Boolean!
+    currentUser(token: String): HumanUser
+    humanUsers(token: String): [HumanUser!]!
+    humanUser(token: String, id: String!): HumanUser
+    userSetup(token: String!): UserSetupInfo
+    
+    # API Keys
+    apiUsers(token: String): [ApiUser!]!
+    apiUser(token: String, id: String!): ApiUser
+
+    # Saved Queries
+    savedQueries(token: String): [SavedQuery!]!
+    savedQuery(token: String, id: String!): SavedQuery
+
+    # Remote Access
+    remoteAccessConfig(token: String): RemoteAccessConfig!
+    remoteUsage(token: String!): [UsageEntry!]!
+    remoteQuota(token: String!): RemoteQuota
+}
+
+type Mutation {
+    createLocalFileSystemDataSource(token: String, input: CreateLocalFileSystemDataSourceInput!): LocalFileSystemDataSource!
+    createRemoteFileSystemDataSource(token: String, input: CreateRemoteFileSystemDataSourceInput!): RemoteFileSystemDataSource!
+    createS3BucketDataSource(token: String, input: CreateS3BucketDataSourceInput!): S3BucketDataSource!
+    updateLocalFileSystemDataSource(token: String, name: String!, input: UpdateLocalFileSystemDataSourceInput!): LocalFileSystemDataSource
+    updateRemoteFileSystemDataSource(token: String, name: String!, input: UpdateRemoteFileSystemDataSourceInput!): RemoteFileSystemDataSource
+    updateS3BucketDataSource(token: String, name: String!, input: UpdateS3BucketDataSourceInput!): S3BucketDataSource
+    deleteDataSource(token: String, name: String!, type: DataSourceType!): Boolean!
+    clearDataSourceData(token: String, name: String!, type: DataSourceType!): Int!
+    scanDataSource(token: String, name: String!, type: DataSourceType!): DataSource
+    addDataSourceTreatment(token: String, input: AddDataSourceTreatmentInput!): DataSourceTreatment!
+    removeDataSourceTreatment(token: String, dataSourceName: String!, dataSourceType: DataSourceType!, treatment: TreatmentType!): Boolean!
+    updateDataSourceTreatmentConfig(token: String, input: UpdateDataSourceTreatmentConfigInput!): DataSourceTreatment
+
+    # Set or update a user setting
+    setUserSetting(token: String, settingName: String!, value: String!): UserSetting!
+    setAiSetting(token: String, settingName: String!, value: String!): UserSetting!
+
+    # Set the instance-global face embedding model. For CUSTOM, url is fetched and probed inline and
+    # a model that fails is never stored; for BUILTIN, nonCommercialAck must be true. Throws (leaving
+    # the previous selection in force) on any failure.
+    setFaceEmbeddingModel(token: String, mode: String!, url: String, nonCommercialAck: Boolean): FaceEmbeddingModelStatus!
+    # Sets the grouping threshold AND re-clusters every stored face at it. No re-embedding: the
+    # vectors are unchanged, only how they are clustered.
+    setFaceGroupingThreshold(token: String, threshold: Float!): FaceEmbeddingModelStatus!
+
+    # Rename a detected-face group label (updates the group and every detectedface result carrying it)
+    renameFaceLabel(token: String, oldLabel: String!, newLabel: String!): Boolean!
+
+    # AI Helper operations (multi-provider)
+    testAiConnection(token: String): Boolean!
+    interpretCronExpression(token: String, naturalLanguageInput: String!): CronInterpretation
+    explainCronExpression(token: String, cronExpression: String!): CronExplanation
+    interpretSkipPattern(token: String, naturalLanguageInput: String!): SkipPatternInterpretation
+    explainSkipPattern(token: String, skipPattern: String!): SkipPatternExplanation
+    interpretSearchQuery(token: String, input: AiSearchInterpretationInput!): AiSearchInterpretation!
+
+    # Authentication
+    login(input: LoginInput!): AuthResult!
+    loginWithRecoveryCode(input: RecoveryLoginInput!): AuthResult!
+    loginWithApiKey(input: LoginWithApiKeyInput!): AuthResult!
+    logout(token: String): Boolean!
+    createHumanUser(token: String, input: CreateHumanUserInput!): UserCreationResult!
+    updateHumanUser(token: String, input: UpdateHumanUserInput!): HumanUser!
+    deleteHumanUser(token: String, id: String!): Boolean!
+    regenerateTotpSecret(token: String, id: String!): TotpSetup!
+    regenerateRecoveryCodes(token: String, id: String!): RecoveryCodesResult!
+    regenerateSetupToken(token: String, userId: String!): UserCreationResult!
+    
+    # API Keys
+    createApiUser(token: String, input: CreateApiUserInput!): ApiUserCreationResult!
+    deleteApiUser(token: String, id: String!): Boolean!
+
+    # Saved Queries
+    createSavedQuery(token: String, input: CreateSavedQueryInput!): SavedQuery!
+    deleteSavedQuery(token: String, id: String!): Boolean!
+
+    # Remote Access
+    """
+    Enables or disables remote access.
+
+    Without inviteCode this switches the tunnel on or off using the stored credential, so the Server
+    ID survives switching off and on. With inviteCode (only valid with enabled: true) the instance
+    enrolls afresh: the code is presented on one connection attempt, and if the tunnel accepts it,
+    the credential it issues replaces the stored one under a new Server ID. A code that is not
+    accepted leaves the stored credential in place. The outcome arrives asynchronously — watch
+    remoteAccessConfigUpdates for the new serverId or a statusMessage.
+    """
+    setRemoteAccessEnabled(
+        token: String,
+        enabled: Boolean!,
+        "A single-use invite code (efi_…). Never stored; re-enter it if the attempt fails."
+        inviteCode: String
+    ): RemoteAccessConfig!
+    reenrollRemoteAccess(token: String): RemoteAccessConfig!
+
+    # Item management
+    deleteItem(token: String, dataSourceName: String!, dataSourceType: DataSourceType!, name: String!, folder: String): Boolean!
+}
+
+type Subscription {
+    dataSourceStatsUpdates(token: String, name: String!, type: DataSourceType!, intervalSeconds: Int = 5): DataSourceStats!
+    remoteAccessConfigUpdates(token: String): RemoteAccessConfig!
+}
+
+# User setting type
+type UserSetting {
+    settingName: String!
+    value: String!
+}
+
+# AI Helper types
+type CronInterpretation {
+    cronExpression: String!
+    naturalLanguageInput: String!
+}
+
+type CronExplanation {
+    cronExpression: String!
+    naturalLanguageExplanation: String!
+}
+
+type SkipPatternInterpretation {
+    skipPattern: String!
+    naturalLanguageInput: String!
+}
+
+type SkipPatternExplanation {
+    skipPattern: String!
+    naturalLanguageExplanation: String!
+}
+
+# AI Search Interpretation types
+input AiSearchInterpretationInput {
+    naturalLanguageQuery: String!
+    availableKeys: [String!]
+}
+
+type AiSearchInterpretation {
+    naturalLanguageQuery: String!
+    success: Boolean!
+    searchConditions: [SearchCondition!]!
+    searchString: String
+    explanation: String!
+    confidence: Float
+}
+
+type About {
+    name: String!
+    version: String!
+    description: String!
+    environment: String!
+    timezone: String!
+    banner: String!
+}
+
+interface DataSource {
+    name: String!
+    cronPattern: String
+    dateCreated: String!
+    dateLastScanned: String
+    status: DataSourceStatus!
+    type: DataSourceType!
+    skipFiles: String
+}
+
+type LocalFileSystemDataSource implements DataSource {
+    name: String!
+    cronPattern: String
+    dateCreated: String!
+    dateLastScanned: String
+    status: DataSourceStatus!
+    type: DataSourceType!
+    localPath: String!
+    skipFiles: String
+}
+
+type RemoteFileSystemDataSource implements DataSource {
+    name: String!
+    cronPattern: String
+    dateCreated: String!
+    dateLastScanned: String
+    status: DataSourceStatus!
+    type: DataSourceType!
+    server: String!
+    domain: String
+    username: String!
+    password: String!
+    shareName: String!
+    path: String!
+    skipFiles: String
+}
+
+type S3BucketDataSource implements DataSource {
+    name: String!
+    cronPattern: String
+    dateCreated: String!
+    dateLastScanned: String
+    status: DataSourceStatus!
+    type: DataSourceType!
+    nameOrUrl: String!
+    accessKey: String!
+    secretKey: String!
+    path: String!
+    region: String
+    skipFiles: String
+}
+
+enum DataSourceType {
+    LOCAL_FILESYSTEM
+    REMOTE_FILESYSTEM
+    S3_BUCKET
+}
+
+enum AiProvider {
+    NONE
+    OLLAMA
+    OPENAI
+    ANTHROPIC
+}
+
+enum DataSourceStatus {
+    IDLE
+    SCANNING
+}
+
+type DataSourceStats {
+    totalItems: Int!
+    treatmentStatusCounts: [TreatmentStatusCount!]!
+    dataSourceStatus: DataSourceStatus!
+    dateLastScanned: String
+    previewsToDo: Int!
+    foldersWithProblems: Int!
+}
+
+type TreatmentStatusCount {
+    status: ItemTreatmentStatus!
+    count: Int!
+}
+
+type TestDataSourceResult {
+    success: Boolean!
+    message: String
+    files: [Item!]!
+    folders: [Folder!]!
+}
+
+enum ItemTreatmentStatus {
+    NEW
+    UPDATED
+    INPROGRESS
+    DONE
+    FAILED
+}
+
+input CreateLocalFileSystemDataSourceInput {
+    name: String!
+    cronPattern: String
+    localPath: String!
+    skipFiles: String
+}
+
+input CreateRemoteFileSystemDataSourceInput {
+    name: String!
+    cronPattern: String
+    server: String!
+    domain: String
+    username: String!
+    password: String!
+    shareName: String!
+    path: String
+    skipFiles: String
+}
+
+input CreateS3BucketDataSourceInput {
+    name: String!
+    cronPattern: String
+    nameOrUrl: String!
+    accessKey: String!
+    secretKey: String!
+    path: String
+    region: String
+    skipFiles: String
+}
+
+input UpdateLocalFileSystemDataSourceInput {
+    name: String
+    cronPattern: String
+    localPath: String
+    skipFiles: String
+}
+
+input UpdateRemoteFileSystemDataSourceInput {
+    name: String
+    cronPattern: String
+    server: String
+    domain: String
+    username: String
+    password: String
+    shareName: String
+    path: String
+    skipFiles: String
+}
+
+input UpdateS3BucketDataSourceInput {
+    name: String
+    cronPattern: String
+    nameOrUrl: String
+    accessKey: String
+    secretKey: String
+    path: String
+    region: String
+    skipFiles: String
+}
+
+type DataSourceTreatment {
+    treatment: TreatmentType!
+    config: String
+    dateCreated: String!
+}
+
+type TreatmentInfo {
+    name: TreatmentType!
+    label: String!
+    description: String
+}
+
+type FaceEmbeddingModelStatus {
+    # NONE, BUILTIN, or CUSTOM
+    mode: String!
+    # The custom model URL, when mode is CUSTOM; empty otherwise
+    url: String!
+    # Embedding dimension of the selected model (0 when NONE)
+    outputDim: Int!
+    # How many datasources have face recognition enabled — the blast radius of a model change
+    enabledDatasourceCount: Int!
+    # Cosine at or above which two faces are the same person
+    threshold: Float!
+    # What the current model's probe implied, before any operator tuning
+    derivedThreshold: Float!
+}
+
+enum TreatmentType {
+    NAME_AND_PATH
+    CONTENT
+    OCR
+    OBJECT_DETECTION
+    FACE_DETECTION
+    FACE_RECOGNITION
+}
+
+input AddDataSourceTreatmentInput {
+    dataSourceName: String!
+    dataSourceType: DataSourceType!
+    treatment: TreatmentType!
+    config: String
+}
+
+input UpdateDataSourceTreatmentConfigInput {
+    dataSourceName: String!
+    dataSourceType: DataSourceType!
+    treatment: TreatmentType!
+    config: String
+}
+
+type Item {
+    name: String!
+    folder: String
+    sizeBytes: Long
+    mimeType: String
+    dataSourceName: String!
+    dataSourceType: DataSourceType!
+    dateCreated: String!
+    dateModified: String!
+    downloadLink: String
+    rawBase64Content: String
+    previewLink: String
+    # Detected faces with their identity labels, in face-index order. Resolved lazily — only
+    # queries that ask for it pay for the lookup. The detectedface attribute lists the names in a
+    # photo; this says which face carries which, keyed by the same index the crop URL uses.
+    faces: [ItemFace!]!
+}
+
+type ItemFace {
+    # Stable 0-based position of the face within its item; the key the crop URL addresses
+    faceIndex: Int!
+    # Identity label, or null when the face has no name (recognition off, not yet drained, or
+    # skipped). An unlabeled face renders as a plain crop with no caption and no rename option.
+    label: String
+}
+
+type Folder {
+    name: String!
+    folder: String
+    dataSourceName: String!
+    dataSourceType: DataSourceType!
+}
+
+type ItemAttribute {
+    key: String!
+    value: String!
+}
+
+type SearchResult {
+    searchConditions: [SearchCondition!]
+    name: String
+    folder: String
+    searchString: String
+    offset: Int!
+    howmany: Int!
+    totalHits: Int!
+    sortDirection: SortDirection!
+    items: [Item!]!
+}
+
+type SearchCondition {
+    name: String!
+    operation: SearchOperation!
+    value: String!
+}
+
+type Facet {
+    key: String!
+    values: [FacetValue!]!
+}
+
+type FacetValue {
+    value: String!
+    count: Int!
+}
+
+"""
+One filter on a single item attribute.
+
+Values are matched against the attributes produced by treatments, keyed by name
+(`content`, `name`, `path`, `content-type`, EXIF and ICC keys, and so on). Use
+`availableItemAttributeKeys` to discover which keys exist.
+
+Two field classes behave differently, and this is the one distinction a caller has to
+learn:
+
+* **Metadata fields** match **characters**. `istribut` finds `distributed` in a filename.
+* **Content fields** (`content`, `content-<N>`, `ocr-content*`) match **whole words**.
+  `istribut` finds nothing in document text; there is no way to ask for a mid-token
+  substring there.
+
+**Known limit — large documents.** Extracted text beyond roughly 500KB is stored under
+numbered keys (`content-0`, `content-1`, … and likewise `ocr-content-<N>`) rather than
+under `content`. A condition naming `content` therefore does not see such a document at
+all: `LIKE` matches none of them and `NOT_LIKE` matches all of them. `searchString` is
+unaffected — it searches every key. Prefer `searchString` for document text unless you
+specifically need to filter one key.
+"""
+input SearchConditionInput {
+    "Attribute key to filter on, e.g. `name`, `path`, `content`, `content-type`."
+    name: String!
+    operation: SearchOperation!
+    """
+    The value to match. For `LIKE` and `NOT_LIKE` this is parsed: whitespace separates
+    terms, and a term wrapped in double quotes is a phrase. All terms must be satisfied
+    by **one value of the named key** — `name LIKE "annual report"` means both words in
+    one `name`, never one word in `name` and the other in `path`.
+    """
+    value: String!
+}
+
+"""
+How a `SearchConditionInput` value is compared.
+
+`LIKE` and `NOT_LIKE` are exact complements of one another: every item satisfies exactly
+one of them. `LESS` and `GREATER` are **not** complements — an item whose value is equal
+to the given one, or which does not carry the key at all, satisfies neither.
+
+**Negation is over the item, not the value.** `NOT_EQUAL` and `NOT_LIKE` compile to
+`NOT EXISTS`, so they are satisfied by an item that simply does not carry the key — not
+only by one that carries it with a non-matching value.
+"""
+enum SearchOperation {
+    "Item has a value for this key that sorts before the given one (string comparison)."
+    LESS
+    "Item has a value for this key that sorts after the given one (string comparison)."
+    GREATER
+    "Item has a value for this key exactly equal to the given one."
+    EQUAL
+    "Item has no value for this key exactly equal to the given one, including having no such key."
+    NOT_EQUAL
+    """
+    One value of this key contains **all** of these terms.
+
+    Unquoted terms may appear in any order, need not be adjacent, and — on a metadata
+    field — may be mid-word: `name LIKE Microsoft Word` matches
+    `Microsoft Office Word`, `Microsoft® Word for Microsoft 365` and
+    `Microsoft_Word_-_report.pdf`.
+
+    Quote a term to require it **contiguous and in that order**: `name LIKE "Microsoft
+    Word"` matches only the literal phrase. Quoting is the only way to ask for adjacency,
+    and on a content field it is the expensive option — cost grows with how many
+    documents contain the words at all, and a common phrase can take seconds.
+    """
+    LIKE
+    """
+    No value of this key satisfies `LIKE`, including the item having no such key at all.
+
+    Note the direction: because quoting narrows `LIKE`, it **widens** `NOT_LIKE`.
+    `NOT_LIKE "annual report"` excludes only items with that exact phrase, while
+    `NOT_LIKE annual report` excludes every item holding both words anywhere in one value.
+    """
+    NOT_LIKE
+}
+
+enum SortDirection {
+    ASC
+    DESC
+}
+
+# ================= Remote Access Types =================
+
+enum UsageGranularity {
+    day
+    month
+    year
+}
+
+type UsageEntry {
+    serverId:     String!
+    granularity:  UsageGranularity!
+    period:       String!
+    ingressBytes: Int!
+    egressBytes:  Int!
+}
+
+type RemoteAccessConfig {
+    serverId: String
+    enabled: Boolean!
+    lastConnected: String
+    isConnected: Boolean!
+    statusMessage: String
+}
+
+type RemoteQuota {
+    serverId: String!
+    monthlyQuotaPercentUsed: Float!
+}
+
+# ================= Authentication Types =================
+
+type HumanUser {
+    id: String!
+    nickname: String!
+    userLevel: UserLevel!
+    dateCreated: String!
+    dateLastLogin: String
+    isActive: Boolean!
+    recoveryCodesRemaining: Int!
+}
+
+type AuthResult {
+    token: String!
+    user: HumanUser!
+    expiresAt: String!
+}
+
+type TotpSetup {
+    secret: String!
+    qrCodeDataUrl: String!
+    recoveryCodes: [String!]!
+}
+
+type RecoveryCodesResult {
+    recoveryCodes: [String!]!
+}
+
+type UserCreationResult {
+    user: HumanUser!
+    setupToken: String!
+    setupUrl: String!
+}
+
+type UserSetupInfo {
+    nickname: String!
+    qrCodeDataUrl: String!
+    totpSecret: String!
+    recoveryCodes: [String!]!
+    alreadyUsed: Boolean!
+}
+
+enum UserLevel {
+    READER
+    ADMIN
+}
+
+input LoginInput {
+    nickname: String!
+    totpCode: String!
+    rememberMe: Boolean
+}
+
+input RecoveryLoginInput {
+    nickname: String!
+    recoveryCode: String!
+}
+
+input CreateHumanUserInput {
+    nickname: String!
+    userLevel: UserLevel!
+}
+
+input UpdateHumanUserInput {
+    id: String!
+    nickname: String
+    userLevel: UserLevel
+    isActive: Boolean
+}
+# ================= API Key Types =================
+
+type ApiUser {
+    id: String!
+    nickname: String!
+    keyValuePreview: String!
+    userLevel: UserLevel!
+    createdByUserId: String
+    dateCreated: String!
+    dateExpires: String!
+    dateLastUsed: String
+    isActive: Boolean!
+    isExpired: Boolean!
+}
+
+type ApiUserCreationResult {
+    apiUser: ApiUser!
+    keyValue: String!
+}
+
+input CreateApiUserInput {
+    nickname: String!
+    userLevel: UserLevel!
+    expirationDays: Int!
+}
+
+input LoginWithApiKeyInput {
+    nickname: String!
+    keyValue: String!
+}
+
+# ================= Saved Query Types =================
+
+type SavedQuery {
+    id: String!
+    userId: String!
+    name: String!
+    searchString: String
+    queryConditions: [SearchCondition!]!
+    sortDirection: SortDirection!
+    dateCreated: String!
+}
+
+input CreateSavedQueryInput {
+    searchString: String
+    queryConditions: [SearchConditionInput!]
+    sortDirection: SortDirection
+}

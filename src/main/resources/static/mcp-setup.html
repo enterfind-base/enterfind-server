@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MCP GraphQL Wrapper Setup - Enterfind Server</title>
+    <link rel="icon" type="image/png" href="favicon.png">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 40px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            font-size: 1.2em;
+            opacity: 0.9;
+        }
+
+        .content {
+            padding: 40px;
+        }
+
+        .section {
+            margin-bottom: 40px;
+        }
+
+        .section h2 {
+            color: #667eea;
+            margin-bottom: 20px;
+            font-size: 1.8em;
+            border-bottom: 2px solid #667eea;
+            padding-bottom: 10px;
+        }
+
+        .section h3 {
+            color: #764ba2;
+            margin: 20px 0 10px 0;
+            font-size: 1.3em;
+        }
+
+        .download-box {
+            background: #f8f9fa;
+            border: 2px solid #667eea;
+            border-radius: 8px;
+            padding: 30px;
+            text-align: center;
+            margin: 30px 0;
+        }
+
+        .download-button {
+            display: inline-block;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px 40px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-size: 1.2em;
+            font-weight: bold;
+            transition: transform 0.2s, box-shadow 0.2s;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .download-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
+        }
+
+        .info-box {
+            background: #e3f2fd;
+            border-left: 4px solid #2196F3;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+
+        .warning-box {
+            background: #fff3e0;
+            border-left: 4px solid #ff9800;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+
+        .success-box {
+            background: #e8f5e9;
+            border-left: 4px solid #4caf50;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+
+        code {
+            background: #f5f5f5;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+            color: #d63384;
+        }
+
+        pre {
+            background: #2d2d2d;
+            color: #f8f8f2;
+            padding: 20px;
+            border-radius: 8px;
+            overflow-x: auto;
+            margin: 15px 0;
+            font-size: 0.9em;
+            line-height: 1.5;
+        }
+
+        pre code {
+            background: transparent;
+            padding: 0;
+            color: inherit;
+        }
+
+        .step {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+            border-left: 4px solid #667eea;
+        }
+
+        .step-number {
+            display: inline-block;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            text-align: center;
+            line-height: 30px;
+            font-weight: bold;
+            margin-right: 10px;
+        }
+
+        ul, ol {
+            margin-left: 30px;
+            margin-top: 10px;
+        }
+
+        li {
+            margin-bottom: 8px;
+        }
+
+        .footer {
+            background: #f8f9fa;
+            padding: 20px 40px;
+            text-align: center;
+            color: #666;
+            border-top: 1px solid #ddd;
+        }
+
+        .platform-tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .platform-tab {
+            flex: 1;
+            padding: 12px;
+            background: #f8f9fa;
+            border: 2px solid #ddd;
+            border-radius: 8px 8px 0 0;
+            text-align: center;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s;
+        }
+
+        .platform-tab.active {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-color: #667eea;
+        }
+
+        .platform-content {
+            display: none;
+        }
+
+        .platform-content.active {
+            display: block;
+        }
+
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 1.8em;
+            }
+
+            .content {
+                padding: 20px;
+            }
+
+            .platform-tabs {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <img src="enterfind_logo.jpeg" alt="EnterFind" style="height: 48px; margin-bottom: 1rem;">
+            <h1>🔌 MCP GraphQL Wrapper</h1>
+            <p>Connect Claude Desktop Directly to Enterfind's GraphQL API</p>
+        </div>
+
+        <div class="content">
+            <!-- What is this? -->
+            <div class="section">
+                <h2>What is this?</h2>
+                <p>The MCP GraphQL Wrapper is a Node.js script that allows Claude Desktop to connect <strong>directly to Enterfind's GraphQL API</strong>, without requiring a hosted MCP server endpoint. The wrapper implements the MCP protocol locally and translates tool calls to GraphQL queries.</p>
+
+                <div class="info-box">
+                    <strong>📌 Use Case:</strong> You have an Enterfind server with GraphQL API (e.g., <code>https://your-enterfind-instance.example.com/graphql</code>) and want to use it with Claude Desktop. This wrapper bridges stdio (used by Claude) directly to GraphQL—no <code>/mcp</code> endpoint needed!
+                </div>
+
+                <div class="success-box">
+                    <strong>✨ Features:</strong>
+                    <ul>
+                        <li><strong>Stateless design</strong> - No token storage; AI manages authentication via GraphQL variables</li>
+                        <li><strong>Schema introspection</strong> - Discover available queries, mutations, and authentication requirements</li>
+                        <li><strong>Direct GraphQL execution</strong> - Run any query or mutation with pass-through variables</li>
+                        <li><strong>No server changes needed</strong> - Works with any GraphQL endpoint</li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Download -->
+            <div class="section">
+                <h2>Download</h2>
+                <div class="download-box">
+                    <h3 style="margin: 0 0 20px 0; color: #667eea;">Get the Wrapper Script</h3>
+                    <a id="wrapperDownloadLink" href="/mcp-graphql-wrapper.js" download="mcp-graphql-wrapper.js" class="download-button">
+                        ⬇️ Download mcp-graphql-wrapper.js
+                    </a>
+                    <p style="margin-top: 20px; color: #666;">
+                        <strong>Requirements:</strong> Node.js v14 or higher
+                    </p>
+                </div>
+            </div>
+
+            <!-- How It Works -->
+            <div class="section">
+                <h2>How It Works</h2>
+                <div style="text-align: center; margin: 30px 0;">
+                    <div style="display: inline-block; text-align: left;">
+                        <div style="padding: 20px; background: #f8f9fa; border-radius: 8px;">
+                            <strong>Claude Desktop</strong> (stdio / JSON-RPC)<br>
+                            &nbsp;&nbsp;&nbsp;&nbsp;↕️<br>
+                            <strong style="color: #667eea;">MCP GraphQL Wrapper</strong> (implements MCP protocol)<br>
+                            &nbsp;&nbsp;&nbsp;&nbsp;↕️<br>
+                            <strong>Enterfind GraphQL API</strong> (/graphql)
+                        </div>
+                    </div>
+                </div>
+                <p>The wrapper implements the MCP protocol locally, exposing two tools that translate to GraphQL operations:</p>
+                <ul>
+                    <li><code>introspect_graphql_schema</code> - Get the GraphQL schema to discover available queries, mutations, and authentication requirements</li>
+                    <li><code>execute_graphql</code> - Run any GraphQL query or mutation (pass token as a variable for authenticated operations)</li>
+                </ul>
+            </div>
+
+            <!-- Setup Instructions -->
+            <div class="section">
+                <h2>Setup Instructions</h2>
+
+                <div class="step">
+                    <h3><span class="step-number">1</span>Download the Script</h3>
+                    <p>Download <code>mcp-graphql-wrapper.js</code> using the button above and save it to a convenient location.</p>
+                </div>
+
+                <div class="step">
+                    <h3><span class="step-number">2</span>Test the Connection</h3>
+                    <p>Verify the wrapper can communicate with your server:</p>
+                    <pre><code>echo '{"jsonrpc":"2.0","method":"initialize","params":{},"id":1}' | \
+  node mcp-graphql-wrapper.js https://your-server-url/graphql</code></pre>
+                    <p>You should see a JSON response with server information including protocol version.</p>
+                </div>
+
+                <div class="step">
+                    <h3><span class="step-number">3</span>Configure Claude Desktop</h3>
+
+                    <div class="platform-tabs">
+                        <div class="platform-tab active" onclick="showPlatform('macos')">
+                            🍎 macOS
+                        </div>
+                        <div class="platform-tab" onclick="showPlatform('windows')">
+                            🪟 Windows
+                        </div>
+                    </div>
+
+                    <div id="macos-content" class="platform-content active">
+                        <h4>macOS Configuration:</h4>
+                        <p>1. Open the configuration file:</p>
+                        <pre><code>nano ~/Library/Application\ Support/Claude/claude_desktop_config.json</code></pre>
+
+                        <p>2. Add this configuration:</p>
+                        <pre><code>{
+  "mcpServers": {
+    "enterfind": {
+      "command": "node",
+      "args": [
+        "/path/to/mcp-graphql-wrapper.js",
+        "https://your-server-url/graphql"
+      ]
+    }
+  }
+}</code></pre>
+
+                        <p>3. Save and exit (Ctrl+X, then Y, then Enter)</p>
+                    </div>
+
+                    <div id="windows-content" class="platform-content">
+                        <h4>Windows Configuration:</h4>
+                        <p>1. Open the configuration file:</p>
+                        <pre><code>%APPDATA%\Claude\claude_desktop_config.json</code></pre>
+
+                        <p>2. Add this configuration:</p>
+                        <pre><code>{
+  "mcpServers": {
+    "enterfind": {
+      "command": "node",
+      "args": [
+        "C:\\path\\to\\mcp-graphql-wrapper.js",
+        "https://your-server-url/graphql"
+      ]
+    }
+  }
+}</code></pre>
+
+                        <p>3. Save the file</p>
+                    </div>
+                </div>
+
+                <div class="step">
+                    <h3><span class="step-number">4</span>Restart Claude Desktop</h3>
+                    <p>Completely quit Claude Desktop and restart it. Your MCP server should now be available!</p>
+                </div>
+
+                <div class="step">
+                    <h3><span class="step-number">5</span>Verify Connection</h3>
+                    <div class="success-box">
+                        <strong>✅ Success indicators:</strong>
+                        <ul>
+                            <li>Look for the MCP/tools indicator in Claude Desktop</li>
+                            <li>Your server name should appear in the list of connected servers</li>
+                            <li>Your tools should be available to use in conversations</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Troubleshooting -->
+            <div class="section">
+                <h2>Troubleshooting</h2>
+
+                <h3>Wrapper won't start</h3>
+                <p>Check Claude Desktop logs:</p>
+                <ul>
+                    <li><strong>macOS:</strong> <code>~/Library/Logs/Claude/mcp*.log</code></li>
+                    <li><strong>Windows:</strong> <code>%APPDATA%\Claude\logs\mcp*.log</code></li>
+                </ul>
+
+                <h3>Connection refused</h3>
+                <ul>
+                    <li>Verify your server is running</li>
+                    <li>Check the server URL in your configuration</li>
+                    <li>Ensure your firewall allows the connection</li>
+                </ul>
+
+                <h3>SSL certificate errors</h3>
+                <p>The wrapper accepts self-signed certificates by default. For production use with valid certificates, you may need to modify the script.</p>
+            </div>
+
+            <!-- Important Notes -->
+            <div class="section">
+                <h2>Important Notes</h2>
+
+                <div class="warning-box">
+                    <strong>⚠️ Security:</strong> This wrapper is designed for local/trusted network use. It bypasses SSL certificate verification for self-signed certificates. Do not use this for untrusted or internet-accessible servers.
+                </div>
+
+                <div class="info-box">
+                    <strong>💡 For Internet-Accessible Servers:</strong> If you plan to make your MCP server publicly accessible on the internet, you should implement OAuth 2.1 authentication and use Claude Desktop's "Add custom connector" UI instead of this wrapper.
+                </div>
+            </div>
+
+            <!-- Authentication -->
+            <div class="section">
+                <h2>Authentication</h2>
+                <p>If your Enterfind server requires authentication, the wrapper uses a stateless approach where the AI manages tokens via GraphQL:</p>
+
+                <div class="step">
+                    <h3>🔐 Authentication Flow</h3>
+                    <ol>
+                        <li>Ask Claude to introspect the schema: <em>"What operations are available?"</em></li>
+                        <li>Check if auth is required: Claude calls <code>isAuthenticationRequired</code> query via <code>execute_graphql</code></li>
+                        <li>If required, provide your credentials: <em>"Login with nickname 'myuser' and TOTP code '123456'"</em></li>
+                        <li>Claude calls the <code>login</code> mutation and receives a token</li>
+                        <li>For subsequent authenticated operations, Claude includes the token as a GraphQL variable: <code>{"token": "your-token"}</code></li>
+                    </ol>
+                </div>
+
+                <div class="info-box">
+                    <strong>💡 Stateless Design:</strong> The wrapper does not store tokens—the AI is responsible for including the token in each authenticated request. This makes authentication explicit and discoverable via GraphQL introspection.
+                </div>
+            </div>
+
+            <!-- Example Usage -->
+            <div class="section">
+                <h2>Example Server URLs</h2>
+                <ul>
+                    <li><code>http://localhost:8080/graphql</code> - Local server on same machine</li>
+                    <li><code>http://192.168.1.100:8080/graphql</code> - Server on local network</li>
+                    <li><code>https://your-enterfind-instance.example.com/graphql</code> - Server with DNS name</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="footer">
+            <a href="mailto:info@enterfind.com">info@enterfind.com</a>
+            <p>MCP GraphQL Wrapper for Enterfind Server | Model Context Protocol</p>
+            <p style="margin-top: 10px; font-size: 0.9em;">
+                <a id="graphiqlLink" href="/graphiql" style="color: #667eea; text-decoration: none;">GraphiQL Explorer</a> |
+                <a href="https://modelcontextprotocol.io" target="_blank" style="color: #667eea; text-decoration: none;">MCP Documentation</a>
+            </p>
+        </div>
+    </div>
+
+    <script>
+        function showPlatform(platform) {
+            // Remove active class from all tabs and contents
+            document.querySelectorAll('.platform-tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            document.querySelectorAll('.platform-content').forEach(content => {
+                content.classList.remove('active');
+            });
+
+            // Add active class to selected platform
+            event.target.classList.add('active');
+            document.getElementById(platform + '-content').classList.add('active');
+        }
+    </script>
+    <script type="module">
+        import { getUrl } from './js/remote.js';
+
+        // Fix paths for remote access mode (paths must be prefixed with /<serverId>/)
+        const dl = document.getElementById('wrapperDownloadLink');
+        if (dl) dl.href = getUrl('/mcp-graphql-wrapper.js');
+        const gl = document.getElementById('graphiqlLink');
+        if (gl) gl.href = getUrl('/graphiql');
+    </script>
+</body>
+</html>

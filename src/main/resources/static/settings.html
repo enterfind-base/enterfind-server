@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Settings - EnterFind</title>
+    <link rel="icon" type="image/png" href="favicon.png">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="container">
+            <div class="navbar-left">
+                <a href="index.html" class="navbar-brand"><img src="enterfind_logo.jpeg" alt="EnterFind" style="height: 39px; vertical-align: middle;"></a>
+                <span id="server-version" class="navbar-version"></span>
+            </div>
+            <ul class="navbar-nav">
+                <li><a href="index.html">Search</a></li>
+                <li><a href="sources.html">Data Sources</a></li>
+                <li><a href="settings.html" class="active">Settings</a></li>
+                <li><a href="users.html">Users</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <!-- Page Header -->
+    <header class="page-header">
+        <div class="container">
+            <h1 class="page-title">Settings</h1>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="container">
+        <div id="errorState" class="alert alert-error" style="display: none; margin-top: 1.5rem;"></div>
+        
+        <div id="contentContainer" style="padding: 1.5rem 0;">
+            <!-- About Section -->
+            <div class="card" style="margin-bottom: 1.5rem;">
+                <div class="card-header">
+                    <h2 class="card-title">About</h2>
+                </div>
+                <div class="card-body">
+                    <div id="aboutLoading" class="loading">
+                        <div class="spinner"></div>
+                    </div>
+                    <div id="aboutContent" class="detail-grid" style="display: none;">
+                        <!-- About info will be populated -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Settings Table -->
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title">General Settings</h2>
+                </div>
+                <div class="card-body">
+                    <div id="settingsLoading" class="loading">
+                        <div class="spinner"></div>
+                    </div>
+                    <div id="settingsError" style="display:none;"></div>
+                    <div id="settingsTableContainer" style="display:none;">
+                        <table class="table" id="settingsTable" style="width:100%; border-collapse:separate; border-spacing:0 0.75rem;">
+                            <thead>
+                                <tr>
+                                    <th style="padding-right: 2rem; text-align:left;">Setting</th>
+                                    <th style="padding-right: 2rem; text-align:left;">Value</th>
+                                    <th style="text-align:left;">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <!-- Settings rows will be populated here -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- MCP Server Setup -->
+            <div class="card" style="margin-top: 1.5rem;">
+                <div class="card-header">
+                    <h2 class="card-title">MCP Server</h2>
+                </div>
+                <div class="card-body">
+                    <div style="display: flex; align-items: center; gap: 0.5rem;">
+                        <p style="margin: 0;">Connect AI using local MCP server</p>
+                        <a href="mcp-setup.html" target="_blank" class="btn btn-primary">MCP Setup</a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Public AI Providers -->
+            <div class="card" style="margin-top: 1.5rem;">
+                <div class="card-header">
+                    <h2 class="card-title">Public AI Providers</h2>
+                </div>
+                <div class="card-body">
+                    <div style="display: flex; align-items: center; gap: 0.5rem;">
+                        <p style="margin: 0;">Connect hosted AI assistants (Claude, ChatGPT, Gemini). Requires Remote Access enabled below.</p>
+                        <a href="public-ai-setup.html" target="_blank" class="btn btn-primary">Public AI Setup</a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Remote Access -->
+            <div class="card" style="margin-top: 1.5rem;">
+                <div class="card-header">
+                    <h2 class="card-title">Remote Access</h2>
+                </div>
+                <div class="card-body">
+                    <div id="remoteAccessLoading" class="loading"><div class="spinner"></div></div>
+                    <div id="remoteAccessContent" style="display:none;">
+                        <div style="display:flex; align-items:center; gap:1rem; margin-bottom:1rem;">
+                            <label for="remoteAccessToggle" style="font-weight:600;">Enable Remote Access</label>
+                            <input type="checkbox" id="remoteAccessToggle">
+                            <span id="remoteAccessStatus" style="font-size:0.9rem; color:var(--text-muted);"></span>
+                        </div>
+                        <div style="margin-bottom:1rem; padding:0.75rem 1rem; background:var(--bg-muted, #f7f7f8); border:1px solid var(--border, #e1e1e4); border-radius:6px;">
+                            <p style="margin:0 0 0.5rem; font-size:0.9rem; color:var(--text-muted);">
+                                Use an invite code to connect this instance, or to move it to a new
+                                Server ID. Each code works once. 
+                                Email <a href="mailto:info@enterfind.com">info@enterfind.com</a> for code.
+                            </p>
+                            <div style="display:flex; gap:0.75rem; flex-wrap:wrap; align-items:flex-end;">
+                                <label style="font-size:0.9rem;">
+                                    Invite code<br>
+                                    <input type="text" id="remoteInviteCode" autocomplete="off"
+                                           spellcheck="false" placeholder="efi_…" style="min-width:22rem;">
+                                </label>
+                                <button id="useInviteCodeBtn" class="btn">Use invite code</button>
+                            </div>
+                        </div>
+                        <div style="margin-bottom:0.5rem;">
+                            <span style="font-weight:600;">Server ID: </span>
+                            <code id="remoteServerId"></code>
+                            <button id="copyServerIdBtn" class="btn btn-sm" style="margin-left:0.5rem;">Copy</button>
+                        </div>
+                        <div id="remoteAccessUrlRow" style="display:none;">
+                            <span style="font-weight:600;">Remote URL: </span>
+                            <a id="remoteAccessUrl" target="_blank" rel="noopener noreferrer"></a>
+                        </div>
+                        <div id="remoteMcpUrlRow" style="display:none; margin-top:0.5rem;">
+                            <span style="font-weight:600;">MCP URL: </span>
+                            <code id="remoteMcpUrl"></code>
+                            <button id="copyMcpUrlBtn" class="btn btn-sm" style="margin-left:0.5rem;">Copy</button>
+                        </div>
+                        <div id="remoteChatGptUrlRow" style="display:none; margin-top:0.5rem;">
+                            <span style="font-weight:600;">ChatGPT Action URL: </span>
+                            <code id="remoteChatGptUrl"></code>
+                            <button id="copyChatGptUrlBtn" class="btn btn-sm" style="margin-left:0.5rem;">Copy</button>
+                        </div>
+                        <div style="margin-top:0.5rem;">
+                            <span style="font-weight:600;">API Browser (local): </span>
+                            <a href="/graphiql" target="_blank" rel="noopener noreferrer">/graphiql</a>
+                        </div>
+                        <div id="remoteGraphiqlUrlRow" style="display:none; margin-top:0.25rem;">
+                            <span style="font-weight:600;">API Browser (remote): </span>
+                            <a id="remoteGraphiqlUrl" target="_blank" rel="noopener noreferrer"></a>
+                        </div>
+                        <div id="remoteAccessStatusMessageRow" style="display:none; margin-top:1rem; padding:0.75rem 1rem; background:var(--danger-bg, #fff0f0); border:1px solid var(--danger-border, #f5c6cb); border-radius:6px;">
+                            <div style="display:flex; align-items:flex-start; gap:1rem;">
+                                <div style="flex:1;">
+                                    <span style="font-weight:600; color:var(--danger, #c0392b);">Action Required</span>
+                                    <p id="remoteAccessStatusMessageText" style="margin:0.25rem 0 0; font-size:0.9rem;"></p>
+                                </div>
+                            </div>
+                        </div>
+                        <div style="margin-top:1rem;">
+                            <a href="usage.html" class="btn btn-secondary btn-sm">View Usage</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- AI Helper (Multi-Provider) Settings -->
+            <div class="card" style="margin-top: 1.5rem;">
+                <div class="card-header">
+                    <h2 class="card-title">AI Helper</h2>
+                </div>
+                <div class="card-body">
+                    <div id="aiSettingsLoading" class="loading">
+                        <div class="spinner"></div>
+                    </div>
+                    <div id="aiSettingsContainer" style="display:none;">
+                        <!-- Provider Selection -->
+                        <div style="margin-bottom: 1.5rem;">
+                            <label for="aiProviderSelect" style="font-weight: 600; margin-bottom: 0.5rem; display: block;">AI Provider</label>
+                            <select id="aiProviderSelect" style="padding: 0.5rem; border-radius: 4px; border: 1px solid var(--border-color); font-size: 0.95rem; min-width: 200px;">
+                                <option value="NONE">None (AI features disabled)</option>
+                                <option value="OLLAMA">Ollama (Self-hosted, privacy-focused)</option>
+                                <option value="OPENAI">OpenAI (GPT-4, GPT-4o models)</option>
+                                <option value="ANTHROPIC">Anthropic (Claude models)</option>
+                            </select>
+                            <span id="saveProviderResult" style="margin-left: 0.5rem;"></span>
+                        </div>
+
+                        <!-- Ollama Settings -->
+                        <div id="ollamaSettings" class="provider-settings" style="display:none;">
+                            <h3 style="margin-bottom: 0.75rem; font-size: 1.1rem; color: var(--text-secondary);">Ollama Configuration</h3>
+                            <table class="table" style="width:100%; border-collapse:separate; border-spacing:0 0.75rem;">
+                                <tbody id="ollamaSettingsTable">
+                                    <!-- Ollama settings will be populated here -->
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <!-- OpenAI Settings -->
+                        <div id="openaiSettings" class="provider-settings" style="display:none;">
+                            <h3 style="margin-bottom: 0.75rem; font-size: 1.1rem; color: var(--text-secondary);">OpenAI Configuration</h3>
+                            <table class="table" style="width:100%; border-collapse:separate; border-spacing:0 0.75rem;">
+                                <tbody id="openaiSettingsTable">
+                                    <!-- OpenAI settings will be populated here -->
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <!-- Anthropic Settings -->
+                        <div id="anthropicSettings" class="provider-settings" style="display:none;">
+                            <h3 style="margin-bottom: 0.75rem; font-size: 1.1rem; color: var(--text-secondary);">Anthropic Configuration</h3>
+                            <table class="table" style="width:100%; border-collapse:separate; border-spacing:0 0.75rem;">
+                                <tbody id="anthropicSettingsTable">
+                                    <!-- Anthropic settings will be populated here -->
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <div style="margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid var(--border-color);">
+                            <button id="testAiBtn" class="btn btn-secondary">Test Connection</button>
+                            <span id="testAiResult" style="margin-left: 1rem;"></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Face Recognition Model (instance-global) -->
+            <div class="card" style="margin-top: 1.5rem;">
+                <div class="card-header">
+                    <h2 class="card-title">Face Recognition Model</h2>
+                </div>
+                <div class="card-body">
+                    <div id="faceModelLoading" class="loading"><div class="spinner"></div></div>
+                    <div id="faceModelContainer" style="display:none;">
+                        <p style="color: var(--text-secondary); margin-bottom: 1rem;">
+                            Face detection and face recognition each run on a datasource only when
+                            that datasource is configured for them. Detection needs no model.
+                            <em>Recognition</em> — grouping detected faces into people — requires an
+                            embedding model, chosen here once for the whole instance. Changing it
+                            re-groups every enabled datasource.
+                        </p>
+
+                        <div style="margin-bottom: 1rem;">
+                            <label for="faceModelSelect" style="font-weight: 600; margin-bottom: 0.5rem; display: block;">Embedding model</label>
+                            <select id="faceModelSelect" style="padding: 0.5rem; border-radius: 4px; border: 1px solid var(--border-color); font-size: 0.95rem; min-width: 260px;">
+                                <option value="NONE">None (recognition disabled — detection unaffected)</option>
+                                <option value="BUILTIN">Built-in — EdgeFace-S (strictly non-commercial)</option>
+                                <option value="CUSTOM">Your model (bring your own URL)</option>
+                            </select>
+                            <span id="faceModelEnabledCount" style="margin-left: 0.75rem; color: var(--text-secondary);"></span>
+                        </div>
+
+                        <!-- Built-in: licence affirmation (a gate, not permission we grant) -->
+                        <div id="faceModelBuiltin" style="display:none; margin-bottom: 1rem; padding: 0.75rem; background: var(--background); border-radius: 4px;">
+                            <label style="display:flex; align-items:flex-start; gap:0.5rem;">
+                                <input type="checkbox" id="faceModelAck" style="margin-top:0.25rem;">
+                                <span>The built-in model (EdgeFace-S) is licensed for <strong>strictly non-commercial use</strong>.
+                                    I affirm that my use of it is non-commercial. (This is not a licence granted by
+                                    Enterfind, and affirming it does not make commercial use compliant.)</span>
+                            </label>
+                        </div>
+
+                        <!-- Custom: URL is the only input; it is fetched and probed on save -->
+                        <div id="faceModelCustom" style="display:none; margin-bottom: 1rem;">
+                            <label for="faceModelUrl" style="font-weight: 600; margin-bottom: 0.5rem; display: block;">Model URL or path</label>
+                            <input type="text" id="faceModelUrl" placeholder="https://… or file:/…  (ONNX, ArcFace-112 aligned)"
+                                   style="padding: 0.5rem; border-radius: 4px; border: 1px solid var(--border-color); width: 100%; max-width: 520px;">
+                            <p style="color: var(--text-secondary); font-size: 0.85rem; margin-top: 0.5rem;">
+                                Your model must be a 112×112 ArcFace-aligned ONNX embedding model. It is fetched
+                                and tested on two known faces when you save; channel order and normalization are
+                                detected automatically. <strong>You are responsible for holding the rights to any
+                                model you point at.</strong>
+                            </p>
+                        </div>
+
+                        <div>
+                            <button id="faceModelSaveBtn" class="btn btn-primary">Save model</button>
+                            <span id="faceModelResult" style="margin-left: 0.75rem;"></span>
+                        </div>
+
+                        <!-- Grouping threshold: an input to grouping like the model itself, so it
+                             lives here and re-clusters on save rather than taking effect quietly. -->
+                        <div id="faceThresholdRow" style="display:none; margin-top: 1.25rem; padding-top: 1rem; border-top: 1px solid var(--border-color);">
+                            <label for="faceThresholdInput" style="font-weight: 600; margin-bottom: 0.5rem; display: block;">Grouping threshold</label>
+                            <input type="number" id="faceThresholdInput" min="0.05" max="0.95" step="0.01"
+                                   style="padding: 0.5rem; border-radius: 4px; border: 1px solid var(--border-color); width: 7rem;">
+                            <button id="faceThresholdSaveBtn" class="btn btn-primary" style="margin-left: 0.5rem;">Save &amp; regroup</button>
+                            <span id="faceThresholdResult" style="margin-left: 0.75rem;"></span>
+                            <p style="color: var(--text-secondary); font-size: 0.85rem; margin-top: 0.5rem;">
+                                How similar two faces must be to count as the same person. Lower merges
+                                more people together; higher splits one person across several. Saving
+                                re-groups every stored face — no images are re-processed, but group
+                                names are rebuilt and human names carried over where they still fit.
+                                <span id="faceThresholdDerived"></span>
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div><!-- end contentContainer -->
+    </main>
+
+    <script type="module" src="js/settings.js"></script>
+</body>
+</html>

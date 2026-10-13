@@ -1,0 +1,954 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EnterFind - User Management</title>
+    <link rel="icon" type="image/png" href="favicon.png">
+    <link rel="stylesheet" href="css/style.css">
+    <style>
+        .users-container {
+            max-width: 1000px;
+            margin: 2rem auto;
+            padding: 0 1rem;
+        }
+
+        .page-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+        }
+
+        .page-header h1 {
+            font-size: 1.5rem;
+            margin: 0;
+        }
+
+        .users-table {
+            width: 100%;
+            border-collapse: collapse;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .users-table th,
+        .users-table td {
+            padding: 1rem;
+            text-align: left;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .users-table th {
+            background: var(--background);
+            font-weight: 600;
+            color: var(--text-secondary);
+            font-size: 0.875rem;
+            text-transform: uppercase;
+        }
+
+        .users-table tr:last-child td {
+            border-bottom: none;
+        }
+
+        .user-level {
+            display: inline-block;
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        .user-level.admin {
+            background: #fef3c7;
+            color: #92400e;
+        }
+
+        .user-level.reader {
+            background: #e0e7ff;
+            color: #3730a3;
+        }
+
+        .user-status {
+            display: inline-block;
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.75rem;
+        }
+
+        .user-status.active {
+            background: #dcfce7;
+            color: #16a34a;
+        }
+
+        .user-status.inactive {
+            background: #fee2e2;
+            color: #dc2626;
+        }
+
+        .actions-cell {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .btn-icon {
+            padding: 0.5rem;
+            background: transparent;
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 1rem;
+        }
+
+        .btn-icon:hover {
+            background: var(--background);
+        }
+
+        .btn-danger {
+            color: #dc2626;
+            border-color: #dc2626;
+        }
+
+        .btn-danger:hover {
+            background: #fee2e2;
+        }
+
+        /* Modal styles */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: var(--surface);
+            border-radius: 8px;
+            padding: 2rem;
+            max-width: 500px;
+            width: 90%;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+        }
+
+        .modal-header h2 {
+            margin: 0;
+            font-size: 1.25rem;
+        }
+
+        .modal-close {
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: var(--text-secondary);
+        }
+
+        .form-group {
+            margin-bottom: 1rem;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 500;
+        }
+
+        .form-group input,
+        .form-group select {
+            width: 100%;
+            padding: 0.75rem;
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            font-size: 1rem;
+        }
+
+        .modal-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 1rem;
+            margin-top: 1.5rem;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 3rem;
+            color: var(--text-secondary);
+        }
+
+        /* Setup URL display */
+        .setup-url-container {
+            background: var(--background);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            padding: 1rem;
+            margin: 1rem 0;
+            word-break: break-all;
+            font-family: monospace;
+            font-size: 0.875rem;
+        }
+
+        .info-box {
+            background: #dbeafe;
+            border: 1px solid #3b82f6;
+            border-radius: 4px;
+            padding: 1rem;
+            margin: 1rem 0;
+            color: #1e40af;
+        }
+
+        .success-icon {
+            font-size: 3rem;
+            text-align: center;
+            margin-bottom: 1rem;
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="container">
+            <div class="navbar-left">
+                <a href="index.html" class="navbar-brand"><img src="enterfind_logo.jpeg" alt="EnterFind" style="height: 39px; vertical-align: middle;"></a>
+                <span id="server-version" class="navbar-version"></span>
+            </div>
+            <ul class="navbar-nav">
+                <li><a href="index.html">Search</a></li>
+                <li><a href="sources.html">Data Sources</a></li>
+                <li><a href="settings.html">Settings</a></li>
+                <li><a href="users.html" class="active">Users</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="users-container">
+        <div id="errorState" class="alert alert-error" style="display: none;"></div>
+        
+        <div id="pageContent">
+            <div class="page-header">
+                <h1>User Management</h1>
+                <button id="addUserBtn" class="btn btn-primary">Add User</button>
+            </div>
+
+            <div id="loadingState" class="loading">
+            <div class="spinner"></div>
+        </div>
+
+        <div id="emptyState" class="empty-state" style="display: none;">
+            <p>No users found. Create your first user to enable authentication.</p>
+        </div>
+
+        <table id="usersTable" class="users-table" style="display: none;">
+            <thead>
+                <tr>
+                    <th>Nickname</th>
+                    <th>Level</th>
+                    <th>Status</th>
+                    <th>Last Login</th>
+                    <th>Recovery Codes</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody id="usersTableBody">
+            </tbody>
+        </table>
+
+        <!-- API Keys Section -->
+        <div style="margin-top: 3rem;">
+            <div class="page-header">
+                <h2 style="font-size: 1.25rem; margin: 0;">API Keys</h2>
+                <button id="addApiKeyBtn" class="btn btn-primary">+ Create API Key</button>
+            </div>
+
+            <div id="apiKeysLoading" class="loading-container" style="display: none;">
+                <div class="spinner"></div>
+            </div>
+
+            <div id="apiKeysEmptyState" class="empty-state" style="display: none;">
+                <p>No API keys found. Create an API key for programmatic access.</p>
+            </div>
+
+            <table id="apiKeysTable" class="users-table" style="display: none;">
+                <thead>
+                    <tr>
+                        <th>Nickname</th>
+                        <th>Key Preview</th>
+                        <th>Level</th>
+                        <th>Status</th>
+                        <th>Expires</th>
+                        <th>Last Used</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="apiKeysTableBody">
+                </tbody>
+            </table>
+        </div>
+
+        </div><!-- end pageContent -->
+    </main>
+
+    <!-- Add User Modal (Simple Form) -->
+    <div id="addUserModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Add New User</h2>
+                <button class="modal-close" data-close-modal>&times;</button>
+            </div>
+
+            <div class="form-group">
+                <label for="newNickname">Nickname</label>
+                <input type="text" id="newNickname" placeholder="Enter nickname" required>
+            </div>
+            <div class="form-group">
+                <label for="newUserLevel">User Level</label>
+                <select id="newUserLevel">
+                    <option value="ADMIN">Admin (Full access)</option>
+                    <option value="READER">Reader (Search only)</option>
+                </select>
+            </div>
+            <div id="createError" class="error-message" style="display: none;"></div>
+            <div class="modal-actions">
+                <button class="btn btn-secondary" data-close-modal>Cancel</button>
+                <button id="createUserBtn" class="btn btn-primary">Create User</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Setup URL Success Modal -->
+    <div id="setupUrlModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>User Created</h2>
+                <button class="modal-close" data-close-modal>&times;</button>
+            </div>
+
+            <div class="success-icon">&#10004;</div>
+            <p style="text-align: center;"><strong id="createdUserName"></strong> has been created successfully.</p>
+
+            <div class="info-box">
+                <strong>Share this one-time setup link with the user.</strong><br>
+                The user will use this link to set up their authenticator app and save their recovery codes.
+                This link can only be used once and expires in 24 hours.
+            </div>
+
+            <div class="setup-url-container" id="setupUrlDisplay"></div>
+
+            <div class="modal-actions">
+                <button id="copySetupUrlBtn" class="btn btn-secondary">Copy Link</button>
+                <button class="btn btn-primary" data-close-modal>Done</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Delete Confirmation Modal -->
+    <div id="deleteModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Delete User</h2>
+                <button class="modal-close" data-close-modal>&times;</button>
+            </div>
+            <p>Are you sure you want to delete user <strong id="deleteUserName"></strong>?</p>
+            <p style="color: var(--text-secondary);">This action cannot be undone.</p>
+            <div class="modal-actions">
+                <button class="btn btn-secondary" data-close-modal>Cancel</button>
+                <button id="confirmDeleteBtn" class="btn btn-primary" style="background: #dc2626;">Delete</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Regenerate Setup Link Modal -->
+    <div id="regenSetupModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>New Setup Link Generated</h2>
+                <button class="modal-close" data-close-modal>&times;</button>
+            </div>
+
+            <p style="text-align: center;">A new setup link has been generated for <strong id="regenUserName"></strong>.</p>
+
+            <div class="info-box">
+                <strong>Important:</strong> This replaces the user's previous TOTP secret. They will need to reconfigure their authenticator app using this new link.
+            </div>
+
+            <div class="setup-url-container" id="regenSetupUrlDisplay"></div>
+
+            <div class="modal-actions">
+                <button id="copyRegenSetupUrlBtn" class="btn btn-secondary">Copy Link</button>
+                <button class="btn btn-primary" data-close-modal>Done</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add API Key Modal -->
+    <div id="addApiKeyModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Create API Key</h2>
+                <button class="modal-close" data-close-modal>&times;</button>
+            </div>
+
+            <div class="form-group">
+                <label for="apiKeyNickname">Nickname</label>
+                <input type="text" id="apiKeyNickname" placeholder="e.g., Jenkins CI, Mobile App" required>
+                <small>A descriptive name to identify this API key</small>
+            </div>
+
+            <div class="form-group">
+                <label for="apiKeyUserLevel">Permission Level</label>
+                <select id="apiKeyUserLevel">
+                    <option value="READER">Reader (Search only)</option>
+                    <option value="ADMIN">Admin (Full access)</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="apiKeyExpiration">Expiration</label>
+                <select id="apiKeyExpiration">
+                    <option value="1">1 day</option>
+                    <option value="7">1 week</option>
+                    <option value="30" selected>1 month</option>
+                    <option value="120">4 months</option>
+                    <option value="365">1 year</option>
+                    <option value="730">2 years</option>
+                </select>
+            </div>
+
+            <div class="modal-actions">
+                <button class="btn btn-secondary" data-close-modal>Cancel</button>
+                <button id="createApiKeyBtn" class="btn btn-primary">Create API Key</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- API Key Created Modal -->
+    <div id="apiKeyCreatedModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>API Key Created</h2>
+                <button class="modal-close" data-close-modal>&times;</button>
+            </div>
+
+            <div class="success-icon">&#10004;</div>
+            <p style="text-align: center;">API key <strong id="createdApiKeyName"></strong> has been created successfully.</p>
+
+            <div class="info-box" style="background: #fef3c7; border-color: #fbbf24;">
+                <strong>⚠️ Save this API key now!</strong><br>
+                For security reasons, you won't be able to see it again.
+            </div>
+
+            <div class="setup-url-container">
+                <div style="background: var(--background); padding: 1rem; border-radius: 4px; font-family: monospace; word-break: break-all; font-size: 0.875rem;" id="apiKeyValueDisplay"></div>
+            </div>
+
+            <div class="modal-actions">
+                <button id="copyApiKeyBtn" class="btn btn-secondary">Copy API Key</button>
+                <button class="btn btn-primary" data-close-modal>Done</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Delete API Key Confirmation Modal -->
+    <div id="deleteApiKeyModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Delete API Key</h2>
+                <button class="modal-close" data-close-modal>&times;</button>
+            </div>
+            <p>Are you sure you want to delete API key <strong id="deleteApiKeyName"></strong>?</p>
+            <p style="color: var(--text-secondary);">This action cannot be undone. Applications using this key will lose access.</p>
+            <div class="modal-actions">
+                <button class="btn btn-secondary" data-close-modal>Cancel</button>
+                <button id="confirmDeleteApiKeyBtn" class="btn btn-primary" style="background: #dc2626;">Delete</button>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import {
+            isAuthenticationRequired,
+            isLoggedIn,
+            isAdmin,
+            getAuthUser,
+            setupNavbar,
+            clearAuth,
+            logout,
+            getHumanUsers,
+            createHumanUser,
+            updateHumanUser,
+            deleteHumanUser,
+            regenerateRecoveryCodes,
+            regenerateSetupToken
+        } from './js/auth.js';
+        import { initFooter } from './js/footer.js';
+        import { escapeHtml, formatDate, getExpirationOptions, showAlert, showConfirm } from './js/util.js';
+        import { fetchServerTimezone, getApiUsers, createApiUser, deleteApiUser } from './js/api.js';
+        import { getLoginUrl, getUrl } from './js/remote.js';
+
+        const $ = (id) => document.getElementById(id);
+
+        let users = [];
+        let apiKeys = [];
+        let currentSetupUrl = '';
+        let currentApiKeyId = null;
+
+        async function init() {
+            // Check auth status
+            const authRequired = await isAuthenticationRequired();
+
+            if (authRequired) {
+                // Auth is required - check if user is admin
+                if (!isLoggedIn()) {
+                    window.location.href = getLoginUrl();
+                    return;
+                }
+                if (!isAdmin()) {
+                    showAccessDenied('You do not have permission to manage users. Admin access is required.');
+                    return;
+                }
+            }
+
+            // Setup navbar
+            setupNavbar($('navAuth'));
+            initFooter();
+            // Fetch server timezone for proper date formatting
+            fetchServerTimezone();
+
+            // Load users and API keys
+            await loadUsers();
+            await loadApiKeys();
+
+            // Setup event listeners
+            setupEventListeners();
+        }
+
+        function showAccessDenied(message) {
+            $('errorState').style.display = 'block';
+            $('errorState').textContent = message;
+            $('pageContent').style.display = 'none';
+        }
+
+        async function loadUsers() {
+            $('loadingState').style.display = 'block';
+            $('usersTable').style.display = 'none';
+            $('emptyState').style.display = 'none';
+
+            try {
+                users = await getHumanUsers();
+
+                $('loadingState').style.display = 'none';
+
+                if (users.length === 0) {
+                    $('emptyState').style.display = 'block';
+                } else {
+                    renderUsersTable();
+                    $('usersTable').style.display = 'table';
+                }
+            } catch (error) {
+                console.error('Failed to load users:', error);
+                $('loadingState').style.display = 'none';
+
+                // Check if this is a permission error
+                if (error.message && (error.message.includes('Insufficient permissions') || error.message.includes('permission'))) {
+                    showAccessDenied('You do not have permission to manage users. Admin access is required.');
+                } else if (error.message && error.message.includes('Authentication required')) {
+                    // If no users exist and this is initial setup
+                    $('emptyState').style.display = 'block';
+                }
+            }
+        }
+
+        function renderUsersTable() {
+            const tbody = $('usersTableBody');
+            const currentUser = getAuthUser();
+            const isOnlyUser = users.length === 1;
+
+            tbody.innerHTML = users.map(user => `
+                <tr>
+                    <td>${escapeHtml(user.nickname)}</td>
+                    <td><span class="user-level ${user.userLevel.toLowerCase()}">${user.userLevel}</span></td>
+                    <td><span class="user-status ${user.isActive ? 'active' : 'inactive'}">${user.isActive ? 'Active' : 'Inactive'}</span></td>
+                    <td>${user.dateLastLogin ? formatDate(user.dateLastLogin) : 'Never'}</td>
+                    <td>${user.recoveryCodesRemaining} remaining</td>
+                    <td class="actions-cell">
+                        <button class="btn-icon" title="Toggle status" data-toggle-status="${user.id}" data-active="${user.isActive}" ${isOnlyUser ? 'disabled' : ''}>
+                            ${user.isActive ? '&#128274;' : '&#128275;'}
+                        </button>
+                        <button class="btn-icon" title="Regenerate setup link" data-regen-setup="${user.id}" data-nickname="${user.nickname}">
+                            &#128279;
+                        </button>
+                        <button class="btn-icon" title="Regenerate recovery codes" data-regen-codes="${user.id}">
+                            &#128273;
+                        </button>
+                        ${(user.id !== currentUser?.id || isOnlyUser) ? `
+                            <button class="btn-icon btn-danger" title="Delete user" data-delete-user="${user.id}" data-nickname="${user.nickname}">
+                                &#128465;
+                            </button>
+                        ` : ''}
+                    </td>
+                </tr>
+            `).join('');
+
+            // Add event listeners for action buttons
+            tbody.querySelectorAll('[data-toggle-status]').forEach(btn => {
+                btn.addEventListener('click', () => toggleUserStatus(btn.dataset.toggleStatus, btn.dataset.active === 'true'));
+            });
+
+            tbody.querySelectorAll('[data-regen-setup]').forEach(btn => {
+                btn.addEventListener('click', () => regenSetupLink(btn.dataset.regenSetup, btn.dataset.nickname));
+            });
+
+            tbody.querySelectorAll('[data-regen-codes]').forEach(btn => {
+                btn.addEventListener('click', () => regenRecoveryCodes(btn.dataset.regenCodes));
+            });
+
+            tbody.querySelectorAll('[data-delete-user]').forEach(btn => {
+                btn.addEventListener('click', () => showDeleteConfirm(btn.dataset.deleteUser, btn.dataset.nickname));
+            });
+        }
+
+        // ========== API Keys Functions ==========
+
+        async function loadApiKeys() {
+            $('apiKeysLoading').style.display = 'block';
+            $('apiKeysTable').style.display = 'none';
+            $('apiKeysEmptyState').style.display = 'none';
+
+            try {
+                apiKeys = await getApiUsers();
+
+                $('apiKeysLoading').style.display = 'none';
+
+                if (apiKeys.length === 0) {
+                    $('apiKeysEmptyState').style.display = 'block';
+                } else {
+                    renderApiKeysTable();
+                    $('apiKeysTable').style.display = 'table';
+                }
+            } catch (error) {
+                console.error('Failed to load API keys:', error);
+                $('apiKeysLoading').style.display = 'none';
+                $('apiKeysEmptyState').innerHTML = `<p class="alert alert-error">Failed to load API keys: ${escapeHtml(error.message)}</p>`;
+                $('apiKeysEmptyState').style.display = 'block';
+            }
+        }
+
+        function renderApiKeysTable() {
+            const tbody = $('apiKeysTableBody');
+
+            tbody.innerHTML = apiKeys.map(apiKey => {
+                const isExpired = apiKey.isExpired;
+
+                return `
+                    <tr>
+                        <td>${escapeHtml(apiKey.nickname)}</td>
+                        <td><code style="font-size: 0.875rem; color: var(--text-secondary);">${escapeHtml(apiKey.keyValuePreview)}</code></td>
+                        <td><span class="user-level ${apiKey.userLevel.toLowerCase()}">${apiKey.userLevel}</span></td>
+                        <td>
+                            <span class="user-status ${apiKey.isActive && !isExpired ? 'active' : 'inactive'}">
+                                ${isExpired ? 'Expired' : (apiKey.isActive ? 'Active' : 'Inactive')}
+                            </span>
+                        </td>
+                        <td style="color: ${isExpired ? '#dc2626' : 'inherit'};">${formatDate(apiKey.dateExpires)}</td>
+                        <td>${apiKey.dateLastUsed ? formatDate(apiKey.dateLastUsed) : '<span style="color: var(--text-secondary);">Never</span>'}</td>
+                        <td>
+                            <div class="actions-cell">
+                                <button class="btn-icon" title="Delete" 
+                                    data-delete-api-key="${apiKey.id}" 
+                                    data-api-key-nickname="${escapeHtml(apiKey.nickname)}">
+                                    🗑️
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+
+            // Attach event listeners
+            tbody.querySelectorAll('[data-delete-api-key]').forEach(btn => {
+                btn.addEventListener('click', () => showDeleteApiKeyConfirm(btn.dataset.deleteApiKey, btn.dataset.apiKeyNickname));
+            });
+        }
+
+        async function handleCreateApiKey() {
+            const nickname = $('apiKeyNickname').value.trim();
+            const userLevel = $('apiKeyUserLevel').value;
+            const expirationDays = parseInt($('apiKeyExpiration').value);
+
+            if (!nickname) {
+                await showAlert('Please enter a nickname');
+                return;
+            }
+
+            try {
+                const result = await createApiUser(nickname, userLevel, expirationDays);
+
+                // Close create modal
+                $('addApiKeyModal').classList.remove('active');
+
+                // Show success modal with the API key
+                $('createdApiKeyName').textContent = nickname;
+                $('apiKeyValueDisplay').textContent = result.keyValue;
+                $('apiKeyCreatedModal').classList.add('active');
+
+                // Reload API keys list
+                await loadApiKeys();
+            } catch (error) {
+                console.error('Failed to create API key:', error);
+                await showAlert('Failed to create API key: ' + error.message);
+            }
+        }
+
+        function showDeleteApiKeyConfirm(id, nickname) {
+            currentApiKeyId = id;
+            $('deleteApiKeyName').textContent = nickname;
+            $('deleteApiKeyModal').classList.add('active');
+        }
+
+        async function handleDeleteApiKey() {
+            if (!currentApiKeyId) return;
+
+            try {
+                await deleteApiUser(currentApiKeyId);
+                $('deleteApiKeyModal').classList.remove('active');
+                currentApiKeyId = null;
+                await loadApiKeys();
+            } catch (error) {
+                console.error('Failed to delete API key:', error);
+                await showAlert('Failed to delete API key: ' + error.message);
+            }
+        }
+
+        function setupEventListeners() {
+            // Add user button
+            $('addUserBtn').addEventListener('click', () => {
+                $('newNickname').value = '';
+                $('newUserLevel').value = 'ADMIN';
+                $('createError').style.display = 'none';
+                $('addUserModal').classList.add('active');
+            });
+
+            // Close modal buttons
+            document.querySelectorAll('[data-close-modal]').forEach(btn => {
+                btn.addEventListener('click', closeModals);
+            });
+
+            // Create user
+            $('createUserBtn').addEventListener('click', async () => {
+                const nickname = $('newNickname').value.trim();
+                const userLevel = $('newUserLevel').value;
+
+                if (!nickname) {
+                    $('createError').textContent = 'Please enter a nickname';
+                    $('createError').style.display = 'block';
+                    return;
+                }
+
+                try {
+                    $('createUserBtn').disabled = true;
+                    $('createUserBtn').textContent = 'Creating...';
+                    $('createError').style.display = 'none';
+
+                    // Check if this is the first user (no auth required yet)
+                    const isFirstUser = users.length === 0;
+
+                    const result = await createHumanUser(nickname, userLevel);
+
+                    // Close add user modal
+                    $('addUserModal').classList.remove('active');
+
+                    // Build full setup URL
+                    currentSetupUrl = window.location.origin + getUrl(result.setupUrl);
+
+                    if (isFirstUser) {
+                        // For first user, open setup page immediately in new tab
+                        // so they can complete setup before auth is required
+                        window.open(currentSetupUrl, '_blank');
+
+                        // Show a simpler message since page will open automatically
+                        await showAlert('Your account has been created. A new tab has opened for you to complete setup.\n\nScan the QR code and save your recovery codes, then return here to log in.');
+
+                        // Redirect to login page since auth is now required
+                        window.location.href = getLoginUrl();
+                        return;
+                    }
+
+                    // For subsequent users, show setup URL modal
+                    $('createdUserName').textContent = nickname;
+                    $('setupUrlDisplay').textContent = currentSetupUrl;
+                    $('setupUrlModal').classList.add('active');
+
+                    // Refresh users list
+                    await loadUsers();
+                } catch (error) {
+                    $('createError').textContent = error.message || 'Failed to create user';
+                    $('createError').style.display = 'block';
+                } finally {
+                    $('createUserBtn').disabled = false;
+                    $('createUserBtn').textContent = 'Create User';
+                }
+            });
+
+            // Copy setup URL
+            $('copySetupUrlBtn').addEventListener('click', () => {
+                navigator.clipboard.writeText(currentSetupUrl);
+                $('copySetupUrlBtn').textContent = 'Copied!';
+                setTimeout(() => $('copySetupUrlBtn').textContent = 'Copy Link', 2000);
+            });
+
+            // Copy regenerated setup URL
+            $('copyRegenSetupUrlBtn').addEventListener('click', () => {
+                const url = $('regenSetupUrlDisplay').textContent;
+                navigator.clipboard.writeText(url);
+                $('copyRegenSetupUrlBtn').textContent = 'Copied!';
+                setTimeout(() => $('copyRegenSetupUrlBtn').textContent = 'Copy Link', 2000);
+            });
+
+            // Delete confirmation
+            $('confirmDeleteBtn').addEventListener('click', async () => {
+                const userId = $('confirmDeleteBtn').dataset.userId;
+                const currentUser = getAuthUser();
+                const isSelfDelete = currentUser?.id === userId;
+
+                try {
+                    await deleteHumanUser(userId);
+                    closeModals();
+
+                    // If self-deleted, clear auth and redirect to home
+                    if (isSelfDelete) {
+                        clearAuth();
+                        window.location.href = getUrl('/index.html');
+                        return;
+                    }
+
+                    await loadUsers();
+                } catch (error) {
+                    await showAlert(error.message || 'Failed to delete user');
+                }
+            });
+
+            // Click outside modal to close
+            document.querySelectorAll('.modal').forEach(modal => {
+                modal.addEventListener('click', (e) => {
+                    if (e.target === modal) {
+                        closeModals();
+                    }
+                });
+            });
+
+            // API Key event listeners
+            $('addApiKeyBtn').addEventListener('click', () => {
+                $('apiKeyNickname').value = '';
+                $('apiKeyUserLevel').value = 'READER';
+                $('apiKeyExpiration').value = '30';
+                $('addApiKeyModal').classList.add('active');
+            });
+
+            $('createApiKeyBtn').addEventListener('click', handleCreateApiKey);
+
+            $('copyApiKeyBtn').addEventListener('click', () => {
+                const keyValue = $('apiKeyValueDisplay').textContent;
+                navigator.clipboard.writeText(keyValue);
+                $('copyApiKeyBtn').textContent = 'Copied!';
+                setTimeout(() => $('copyApiKeyBtn').textContent = 'Copy API Key', 2000);
+            });
+
+            $('confirmDeleteApiKeyBtn').addEventListener('click', handleDeleteApiKey);
+        }
+
+        async function toggleUserStatus(userId, currentlyActive) {
+            // Prevent deactivating the only user
+            if (currentlyActive && users.length <= 1) {
+                await showAlert('Cannot deactivate the only user');
+                return;
+            }
+
+            try {
+                await updateHumanUser(userId, { isActive: !currentlyActive });
+                await loadUsers();
+            } catch (error) {
+                await showAlert(error.message || 'Failed to update user');
+            }
+        }
+
+        async function regenSetupLink(userId, nickname) {
+            if (!await showConfirm(`Are you sure you want to regenerate the setup link for ${nickname}? This will replace their current TOTP secret, and they will need to reconfigure their authenticator app.`)) {
+                return;
+            }
+
+            try {
+                const result = await regenerateSetupToken(userId);
+                const fullUrl = window.location.origin + getUrl(result.setupUrl);
+
+                $('regenUserName').textContent = nickname;
+                $('regenSetupUrlDisplay').textContent = fullUrl;
+                $('regenSetupModal').classList.add('active');
+            } catch (error) {
+                await showAlert(error.message || 'Failed to regenerate setup link');
+            }
+        }
+
+        async function regenRecoveryCodes(userId) {
+            if (!await showConfirm('Are you sure you want to regenerate recovery codes? The old codes will no longer work.')) {
+                return;
+            }
+
+            try {
+                const result = await regenerateRecoveryCodes(userId);
+                await showAlert('New recovery codes:\n\n' + result.recoveryCodes.join('\n') + '\n\nPlease save these securely!');
+                await loadUsers();
+            } catch (error) {
+                await showAlert(error.message || 'Failed to regenerate codes');
+            }
+        }
+
+        function showDeleteConfirm(userId, nickname) {
+            const currentUser = getAuthUser();
+            const isSelfDelete = currentUser?.id === userId;
+
+            $('deleteUserName').textContent = nickname;
+            $('confirmDeleteBtn').dataset.userId = userId;
+
+            // Update modal text for self-deletion
+            const modalContent = $('deleteModal').querySelector('.modal-content');
+            const warningText = modalContent.querySelector('p:nth-of-type(2)');
+
+            if (isSelfDelete && users.length === 1) {
+                warningText.innerHTML = '<strong style="color: #dc2626;">Warning: This will remove all authentication from the system. Anyone will be able to access the application.</strong>';
+            } else {
+                warningText.textContent = 'This action cannot be undone.';
+            }
+
+            $('deleteModal').classList.add('active');
+        }
+
+        function closeModals() {
+            document.querySelectorAll('.modal').forEach(m => m.classList.remove('active'));
+        }
+
+
+
+        init();
+    </script>
+</body>
+</html>

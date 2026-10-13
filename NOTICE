@@ -1,0 +1,139 @@
+Enterfind Server
+Copyright (c) Enterfind contributors
+
+This product includes software developed by third parties. The bundled
+Java dependencies are listed below with their respective licenses, followed
+by the models Enterfind downloads at runtime and their training data.
+
+Enterfind Server itself is licensed under the GNU Affero General Public
+License, version 3 (see the LICENSE file). The notices below concern
+third-party components only; each remains under its own license.
+
+===============================================================================
+Bundled third-party Java libraries
+===============================================================================
+
+The following libraries are compiled into or distributed with the Enterfind
+Server application jar. Grouped by license.
+
+-------------------------------------------------------------------------------
+Apache License, Version 2.0
+-------------------------------------------------------------------------------
+The following components are licensed under the Apache License, Version 2.0.
+A copy of the license is available at:
+    https://www.apache.org/licenses/LICENSE-2.0
+
+  Spring Boot and its starters (webmvc, websocket, data-jdbc, graphql,
+      actuator, restclient) — Copyright (c) Broadcom Inc.
+      and/or its subsidiaries (formerly VMware / Pivotal).
+      https://spring.io/projects/spring-boot
+  Spring Framework — Copyright (c) Broadcom Inc. and/or its subsidiaries.
+      https://spring.io/projects/spring-framework
+  Spring GraphQL — Copyright (c) Broadcom Inc. and/or its subsidiaries.
+      https://spring.io/projects/spring-graphql
+  Spring AI (spring-ai-starter-model-ollama, -openai, -anthropic, and the
+      spring-ai BOM) — Copyright (c) Broadcom Inc. and/or its subsidiaries.
+      https://spring.io/projects/spring-ai
+  Google Guava (com.google.guava:guava) — Copyright (c) The Guava Authors.
+      https://github.com/google/guava
+  Apache Commons Lang (org.apache.commons:commons-lang3) —
+      Copyright (c) The Apache Software Foundation.
+      https://commons.apache.org/proper/commons-lang/
+  Apache Commons Pool (org.apache.commons:commons-pool2) —
+      Copyright (c) The Apache Software Foundation.
+      https://commons.apache.org/proper/commons-pool/
+  Apache Tika (org.apache.tika:tika-core,
+      tika-parsers-standard-package) —
+      Copyright (c) The Apache Software Foundation.
+      https://tika.apache.org/
+  SMBJ (com.hierynomus:smbj) — Copyright (c) SMBJ Contributors.
+      https://github.com/hierynomus/smbj
+  AWS SDK for Java 2.x — S3 (software.amazon.awssdk:s3) —
+      Copyright (c) Amazon.com, Inc. or its affiliates.
+      https://github.com/aws/aws-sdk-java-v2
+  cron-utils (com.cronutils:cron-utils) —
+      Copyright (c) cron-utils contributors.
+      https://github.com/jmrozanec/cron-utils
+  Deep Java Library — API (ai.djl:api) and ONNX Runtime engine
+      (ai.djl.onnxruntime:onnxruntime-engine) —
+      Copyright (c) Amazon.com, Inc. or its affiliates.
+      https://github.com/deepjavalibrary/djl
+  OpenAI Java SDK — OkHttp client
+      (com.openai:openai-java-client-okhttp) —
+      Copyright (c) OpenAI.
+      https://github.com/openai/openai-java
+  PostgreSQL JDBC Driver (org.postgresql:postgresql) is distributed under
+      the BSD-2-Clause license; see "BSD-2-Clause" below.
+
+-------------------------------------------------------------------------------
+MIT License
+-------------------------------------------------------------------------------
+The following components are licensed under the MIT License:
+
+  graphql-java-extended-scalars
+      (com.graphql-java:graphql-java-extended-scalars) —
+      Copyright (c) graphql-java contributors.
+      https://github.com/graphql-java/graphql-java-extended-scalars
+  Java-WebSocket (org.java-websocket:Java-WebSocket) —
+      Copyright (c) Nathan Rajlich and the Java-WebSocket contributors.
+      https://github.com/TooTallNate/Java-WebSocket
+  Java TOTP (dev.samstevens.totp:totp) — Copyright (c) Sam Stevens.
+      https://github.com/samdjstevens/java-totp
+  Anthropic Java SDK — OkHttp client
+      (com.anthropic:anthropic-java-client-okhttp) —
+      Copyright (c) Anthropic.
+      https://github.com/anthropics/anthropic-sdk-java
+
+  The MIT License permits use, copy, modification, merger, publication,
+  distribution, sublicensing, and sale, provided the copyright notice and
+  permission notice are included in all copies or substantial portions of
+  the software. The software is provided "as is", without warranty of any
+  kind.
+
+-------------------------------------------------------------------------------
+BSD-2-Clause (PostgreSQL License)
+-------------------------------------------------------------------------------
+  PostgreSQL JDBC Driver (org.postgresql:postgresql) —
+      Copyright (c) The PostgreSQL Global Development Group and its
+      contributors. The pgjdbc driver is distributed under the
+      BSD-2-Clause license.
+      https://github.com/pgjdbc/pgjdbc
+
+  Redistribution and use in source and binary forms, with or without
+  modification, are permitted provided that the copyright notice and the
+  two-clause BSD conditions are retained. The software is provided by the
+  copyright holders "as is" and any warranties are disclaimed.
+
+Note on transitive dependencies: the components above pull in additional
+transitive libraries (for example SLF4J, Jackson, Netty, Reactor, OkHttp,
+and others) that are themselves distributed under the Apache License 2.0,
+the MIT License, or similarly permissive terms. A complete, resolved
+dependency tree with per-artifact license metadata can be generated from
+the build with `mvn dependency:tree` and the license-maven-plugin.
+
+===============================================================================
+Object-detection model: YOLOX-tiny
+===============================================================================
+YOLOX (https://github.com/Megvii-BaseDetection/YOLOX)
+Copyright (c) 2021-2022 Megvii Inc. All rights reserved.
+Licensed under the Apache License, Version 2.0.
+
+The yolox_tiny.onnx weights are downloaded at runtime from Megvii's official
+release:
+https://github.com/Megvii-BaseDetection/YOLOX/releases/download/0.1.1rc0/yolox_tiny.onnx
+
+===============================================================================
+Face-detection model: YuNet
+===============================================================================
+YuNet, by Shiqi Yu. Licensed under the MIT License.
+
+The face_detection_yunet_2023mar.onnx weights are downloaded at runtime from
+the OpenCV model zoo:
+https://github.com/opencv/opencv_zoo/raw/main/models/face_detection_yunet/face_detection_yunet_2023mar.onnx
+
+===============================================================================
+Training data: COCO
+===============================================================================
+YOLOX-tiny was trained on the COCO dataset (https://cocodataset.org).
+The COCO annotations are licensed under Creative Commons Attribution 4.0
+(CC BY 4.0). Attribution: COCO Consortium.

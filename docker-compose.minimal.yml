@@ -1,0 +1,48 @@
+version: '3.8'
+
+# Minimal Enterfind deployment: the app + Postgres, nothing else.
+# No reverse proxy, no TLS, no AWS - reach it on a port over your LAN or behind
+# a proxy you already operate. See docs/installation.md ("Compose: minimal") for
+# details, and "Compose: behind your own proxy" there if you want to put your own
+# reverse proxy in front of this.
+#
+# Usage:
+#   cp .env.minimal.template .env   # then fill in the values
+#   docker compose -f docker-compose.minimal.yml up -d
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: enterfind
+      POSTGRES_USER: enterfind
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-change-me}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U enterfind -d enterfind"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  enterfind:
+    image: ghcr.io/enterfind-base/enterfind-server-beta:latest
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "8080:8080"
+    environment:
+      DB_URL: jdbc:postgresql://postgres:5432/enterfind
+      DB_USERNAME: enterfind
+      DB_PASSWORD: ${DB_PASSWORD:-change-me}
+      ENTERFIND_ENCRYPTION_KEY: ${ENTERFIND_ENCRYPTION_KEY}
+    volumes:
+      - ./logs:/app/logs
+      # Mount the documents you want to index, read-only:
+      # - /path/to/your/documents:/data/documents:ro
+
+volumes:
+  postgres_data:

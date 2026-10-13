@@ -1,0 +1,15 @@
+{
+    "java.jdt.ls.java.home": "/usr/lib/jvm/temurin-25-jdk",
+    "java.configuration.runtimes": [
+        {
+            "name": "JavaSE-25",
+            "path": "/usr/lib/jvm/temurin-25-jdk"
+        }
+    ],
+    "java.compile.nullAnalysis.mode": "automatic",
+    "java.inlayHints.parameterNames.enabled": "all",
+    "spring-boot.ls.problem.application-properties.unknown-property": "error",
+    "editor.codeActionsOnSave": {
+        "source.organizeImports": "explicit"
+    }
+}

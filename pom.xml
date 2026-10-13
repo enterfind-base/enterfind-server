@@ -1,0 +1,371 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+	<modelVersion>4.0.0</modelVersion>
+	<parent>
+		<groupId>org.springframework.boot</groupId>
+		<artifactId>spring-boot-starter-parent</artifactId>
+		<version>4.1.0</version>
+		<relativePath/> <!-- lookup parent from repository -->
+	</parent>
+	<groupId>enterfind</groupId>
+	<artifactId>enterfind-server</artifactId>
+	<version>${revision}</version>
+	<name>enterfind-server</name>
+	<properties>
+		<!-- The build version. CI passes -Drevision=1.0.<run_number>, which also names the release
+		     tag v1.0.<run_number>; local builds keep this default. -->
+		<revision>0.0.1-SNAPSHOT</revision>
+		<java.version>25</java.version>
+		<spring-ai.version>2.0.1</spring-ai.version>
+		<!-- Must match the core SDK versions imported by spring-ai-bom ${spring-ai.version};
+		     the OkHttp client modules are not managed by the BOM. -->
+		<anthropic-sdk.version>2.62.0</anthropic-sdk.version>
+		<openai-sdk.version>4.63.1</openai-sdk.version>
+	</properties>
+
+	<dependencyManagement>
+		<dependencies>
+			<!-- Spring AI BOM for version management -->
+			<dependency>
+				<groupId>org.springframework.ai</groupId>
+				<artifactId>spring-ai-bom</artifactId>
+				<version>${spring-ai.version}</version>
+				<type>pom</type>
+				<scope>import</scope>
+			</dependency>
+		</dependencies>
+	</dependencyManagement>
+
+	<dependencies>
+		<!-- Guava: used for Striped keyed locking (NamedLockRegistry) -->
+		<dependency>
+			<groupId>com.google.guava</groupId>
+			<artifactId>guava</artifactId>
+			<version>33.7.1-jre</version>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-webmvc</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-websocket</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-data-jdbc</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-graphql</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>com.graphql-java</groupId>
+			<artifactId>graphql-java-extended-scalars</artifactId>
+			<version>24.0</version>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-actuator</artifactId>
+		</dependency>
+
+		<dependency>
+			<groupId>org.postgresql</groupId>
+			<artifactId>postgresql</artifactId>
+			<scope>runtime</scope>
+		</dependency>
+
+		<!-- WebSocket client for tunnel connection to AWS -->
+		<dependency>
+			<groupId>org.java-websocket</groupId>
+			<artifactId>Java-WebSocket</artifactId>
+			<version>1.6.0</version>
+		</dependency>
+
+		<dependency>
+			<groupId>org.apache.commons</groupId>
+			<artifactId>commons-lang3</artifactId>
+		</dependency>
+
+		<!-- Apache Commons Pool for object pooling -->
+		<dependency>
+			<groupId>org.apache.commons</groupId>
+			<artifactId>commons-pool2</artifactId>
+			<version>2.13.1</version>
+		</dependency>
+
+		<!-- Apache Tika for content extraction -->
+		<dependency>
+			<groupId>org.apache.tika</groupId>
+			<artifactId>tika-core</artifactId>
+			<version>3.3.2</version>
+		</dependency>
+		<dependency>
+			<groupId>org.apache.tika</groupId>
+			<artifactId>tika-parsers-standard-package</artifactId>
+			<version>3.3.2</version>
+		</dependency>
+
+		<!-- SMBJ library for SMB/CIFS file system access -->
+		<dependency>
+			<groupId>com.hierynomus</groupId>
+			<artifactId>smbj</artifactId>
+			<version>0.14.0</version>
+		</dependency>
+
+		<!-- AWS SDK v2 S3 client -->
+		<dependency>
+			<groupId>software.amazon.awssdk</groupId>
+			<artifactId>s3</artifactId>
+			<version>2.55.1</version>
+		</dependency>
+
+		<!-- Cron-utils for cron expression parsing and execution time calculation -->
+		<dependency>
+			<groupId>com.cronutils</groupId>
+			<artifactId>cron-utils</artifactId>
+			<version>9.2.1</version>
+		</dependency>
+
+		<!-- DJL (Deep Java Library) for object detection -->
+		<dependency>
+			<groupId>ai.djl</groupId>
+			<artifactId>api</artifactId>
+			<version>0.36.0</version>
+		</dependency>
+		<!-- PyTorch (libtorch) is deliberately absent, and must stay absent. It was needed only as
+		     DJL's default-engine NDArray fallback: OnnxRuntime's OrtNDArray implements a handful of
+		     tensor ops and DJL silently delegates the rest, which face-recognition *embedding* used
+		     to depend on. That step is gone and every remaining translator is pure Java, so no
+		     fallback is reachable. Re-adding pytorch-engine would bring back both a ~432 MB
+		     libtorch download and a SIGILL on pre-ARMv8.1 CPUs - including the Cortex-A53-class
+		     boards in docs/arm-hardware.md, which lack the ARMv8.1 atomic instructions libtorch's
+		     aarch64 build relies on, and which ONNX Runtime does not require. Any new translator
+		     must do its tensor work over toFloatArray() / manager.create(...), never NDArray ops. -->
+		<dependency>
+			<groupId>ai.djl.onnxruntime</groupId>
+			<artifactId>onnxruntime-engine</artifactId>
+			<version>0.36.0</version>
+		</dependency>
+
+		<!-- TOTP Library for two-factor authentication -->
+		<dependency>
+			<groupId>dev.samstevens.totp</groupId>
+			<artifactId>totp</artifactId>
+			<version>1.7.1</version>
+		</dependency>
+
+
+		<!-- Spring AI Ollama Support -->
+		<dependency>
+			<groupId>org.springframework.ai</groupId>
+			<artifactId>spring-ai-starter-model-ollama</artifactId>
+		</dependency>
+
+		<!-- Official provider SDK OkHttp client modules (Spring AI 2.0 builds ChatModels
+		     on the official SDKs; spring-ai ships only the -core SDK jars, so the OkHttp
+		     client factory used for programmatic construction must be added explicitly). -->
+		<dependency>
+			<groupId>com.anthropic</groupId>
+			<artifactId>anthropic-java-client-okhttp</artifactId>
+			<version>${anthropic-sdk.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>com.openai</groupId>
+			<artifactId>openai-java-client-okhttp</artifactId>
+			<version>${openai-sdk.version}</version>
+		</dependency>
+
+		<!-- Spring AI OpenAI Support -->
+		<dependency>
+			<groupId>org.springframework.ai</groupId>
+			<artifactId>spring-ai-starter-model-openai</artifactId>
+		</dependency>
+
+		<!-- Spring AI Anthropic Support -->
+		<dependency>
+			<groupId>org.springframework.ai</groupId>
+			<artifactId>spring-ai-starter-model-anthropic</artifactId>
+		</dependency>
+
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-test</artifactId>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework.graphql</groupId>
+			<artifactId>spring-graphql-test</artifactId>
+			<scope>test</scope>
+		</dependency>
+		<!-- Spring Boot 4 moved @AutoConfigureGraphQlTester into its own GraphQL test module. -->
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-graphql-test</artifactId>
+			<scope>test</scope>
+		</dependency>
+		<!-- Spring Boot 4 moved TestRestTemplate to its own module/package
+		     (org.springframework.boot.resttestclient.TestRestTemplate); restclient is
+		     the required runtime backing. @SpringBootTest no longer auto-provides the bean. -->
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-resttestclient</artifactId>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-restclient</artifactId>
+		</dependency>
+	</dependencies>
+
+	<build>
+		<finalName>enterfind-server</finalName>
+		<plugins>
+			<plugin>
+				<groupId>org.springframework.boot</groupId>
+				<artifactId>spring-boot-maven-plugin</artifactId>
+			</plugin>
+			
+			<!-- Maven Compiler Plugin with explicit Java 25 configuration -->
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-compiler-plugin</artifactId>
+				<version>3.15.0</version>
+				<configuration>
+					<release>25</release>
+				</configuration>
+			</plugin>
+			
+			<!-- Enhanced Surefire Plugin for Test Execution -->
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-surefire-plugin</artifactId>
+				<version>3.5.6</version>
+				<configuration>
+					<includes>
+						<include>**/*Test.java</include>
+						<include>**/*Tests.java</include>
+						<include>**/*TestCase.java</include>
+					</includes>
+					<reportFormat>xml</reportFormat>
+					<statelessTestsetReporter implementation="org.apache.maven.plugin.surefire.extensions.junit5.JUnit5Xml30StatelessReporter">
+						<disable>false</disable>
+						<version>3.0</version>
+						<usePhrasedFileName>false</usePhrasedFileName>
+						<usePhrasedTestSuiteClassName>true</usePhrasedTestSuiteClassName>
+						<usePhrasedTestCaseClassName>true</usePhrasedTestCaseClassName>
+						<usePhrasedTestCaseMethodName>false</usePhrasedTestCaseMethodName>
+					</statelessTestsetReporter>
+					<consoleOutputReporter implementation="org.apache.maven.plugin.surefire.extensions.junit5.JUnit5ConsoleOutputReporter">
+						<disable>false</disable>
+						<encoding>UTF-8</encoding>
+						<usePhrasedFileName>false</usePhrasedFileName>
+					</consoleOutputReporter>
+					<statelessTestsetInfoReporter implementation="org.apache.maven.plugin.surefire.extensions.junit5.JUnit5StatelessTestsetInfoReporter">
+						<disable>false</disable>
+						<usePhrasedFileName>false</usePhrasedFileName>
+						<usePhrasedClassNameInRunning>true</usePhrasedClassNameInRunning>
+						<usePhrasedClassNameInTestCaseSummary>true</usePhrasedClassNameInTestCaseSummary>
+					</statelessTestsetInfoReporter>
+				</configuration>
+			</plugin>
+
+			<!-- JaCoCo Plugin for Code Coverage -->
+			<plugin>
+				<groupId>org.jacoco</groupId>
+				<artifactId>jacoco-maven-plugin</artifactId>
+			<version>0.8.15</version>
+				<executions>
+					<execution>
+						<goals>
+							<goal>prepare-agent</goal>
+						</goals>
+						<configuration>
+							<excludes>
+								<exclude>jdk/**</exclude>
+								<exclude>sun/**</exclude>
+								<exclude>com/sun/**</exclude>
+								<exclude>org/jcp/**</exclude>
+								<exclude>javax/**</exclude>
+								<exclude>java/**</exclude>
+								<exclude>net/bytebuddy/**</exclude>
+							</excludes>
+						</configuration>
+					</execution>
+					<execution>
+						<id>report</id>
+						<phase>test</phase>
+						<goals>
+							<goal>report</goal>
+						</goals>
+					</execution>
+					<execution>
+						<id>jacoco-check</id>
+						<goals>
+							<goal>check</goal>
+						</goals>
+						<configuration>
+							<rules>
+								<rule>
+									<element>PACKAGE</element>
+									<limits>
+										<limit>
+											<counter>LINE</counter>
+											<value>COVEREDRATIO</value>
+											<minimum>0.0</minimum>
+										</limit>
+									</limits>
+								</rule>
+							</rules>
+						</configuration>
+					</execution>
+				</executions>
+			</plugin>
+
+			<!-- Maven Site Plugin -->
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-site-plugin</artifactId>
+				<version>4.0.0-M16</version>
+			</plugin>
+
+			<!-- Maven Project Info Reports Plugin -->
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-project-info-reports-plugin</artifactId>
+				<version>3.9.0</version>
+			</plugin>
+		</plugins>
+	</build>
+
+	<!-- Reporting Section for Test Reports -->
+	<reporting>
+		<plugins>
+			<!-- Surefire Report Plugin for HTML Test Reports -->
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-surefire-report-plugin</artifactId>
+				<version>3.5.6</version>
+				<configuration>
+					<showSuccess>true</showSuccess>
+				</configuration>
+			</plugin>
+
+			<!-- JaCoCo Report Plugin -->
+			<plugin>
+				<groupId>org.jacoco</groupId>
+				<artifactId>jacoco-maven-plugin</artifactId>
+			<version>0.8.15</version>
+				<reportSets>
+					<reportSet>
+						<reports>
+							<report>report</report>
+						</reports>
+					</reportSet>
+				</reportSets>
+			</plugin>
+		</plugins>
+	</reporting>
+
+</project>

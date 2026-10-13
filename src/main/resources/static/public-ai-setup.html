@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Connecting Public AI Environments - Enterfind Server</title>
+    <link rel="icon" type="image/png" href="favicon.png">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 40px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            font-size: 1.2em;
+            opacity: 0.9;
+        }
+
+        .content {
+            padding: 40px;
+        }
+
+        .section {
+            margin-bottom: 40px;
+        }
+
+        .section h2 {
+            color: #667eea;
+            margin-bottom: 20px;
+            font-size: 1.8em;
+            border-bottom: 2px solid #667eea;
+            padding-bottom: 10px;
+        }
+
+        .section h3 {
+            color: #764ba2;
+            margin: 20px 0 10px 0;
+            font-size: 1.3em;
+        }
+
+        .info-box {
+            background: #e3f2fd;
+            border-left: 4px solid #2196F3;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+
+        .warning-box {
+            background: #fff3e0;
+            border-left: 4px solid #ff9800;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+
+        .success-box {
+            background: #e8f5e9;
+            border-left: 4px solid #4caf50;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+
+        code {
+            background: #f5f5f5;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+            color: #d63384;
+        }
+
+        pre {
+            background: #2d2d2d;
+            color: #f8f8f2;
+            padding: 20px;
+            border-radius: 8px;
+            overflow-x: auto;
+            margin: 15px 0;
+            font-size: 0.9em;
+            line-height: 1.5;
+        }
+
+        pre code {
+            background: transparent;
+            padding: 0;
+            color: inherit;
+        }
+
+        .step {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+            border-left: 4px solid #667eea;
+        }
+
+        .provider {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 30px;
+            margin: 30px 0;
+            border-left: 4px solid #764ba2;
+        }
+
+        .provider h2 {
+            border-bottom-color: #764ba2;
+            color: #764ba2;
+        }
+
+        ul, ol {
+            margin-left: 30px;
+            margin-top: 10px;
+        }
+
+        li {
+            margin-bottom: 8px;
+        }
+
+        .footer {
+            background: #f8f9fa;
+            padding: 20px 40px;
+            text-align: center;
+            color: #666;
+            border-top: 1px solid #ddd;
+        }
+
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 1.8em;
+            }
+
+            .content {
+                padding: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <img src="enterfind_logo.jpeg" alt="EnterFind" style="height: 48px; margin-bottom: 1rem;">
+            <h1>🌐 Connecting Public AI Environments</h1>
+            <p>Connect Claude, ChatGPT, and Gemini to your Enterfind instance</p>
+        </div>
+
+        <div class="content">
+            <!-- Overview -->
+            <div class="section">
+                <p>How to connect Enterfind to the major hosted AI assistants — <a href="#claude" style="color: #667eea;">Claude</a>, <a href="#chatgpt" style="color: #667eea;">ChatGPT</a>, and <a href="#gemini" style="color: #667eea;">Gemini</a> — so they can search and retrieve documents from your instance.</p>
+
+                <div class="info-box">
+                    <strong>📡 Remote Access required:</strong> All three connect over the public internet, so each requires <strong>Remote Access</strong> enabled on your Enterfind instance (see the Remote Access section of <a href="settings.html">Settings</a>). Your Server ID and full remote URL are shown there. A local or LAN address will not work with any of these — the assistant runs in the cloud and must reach your instance through its remote URL.
+                </div>
+
+                <div class="success-box">
+                    <strong>🔐 About authentication:</strong> Enterfind's authentication is part of the GraphQL protocol itself, not a separate HTTP login. In practice this means the assistant discovers, by inspecting Enterfind, whether an instance needs credentials — and if it does, it asks you for your API key in the conversation and uses it for the rest of the session. Public demo instances need nothing; a private instance prompts you when it first needs access. There is no key to configure inside the assistant's settings.
+                </div>
+            </div>
+
+            <!-- Claude -->
+            <div class="section provider" id="claude">
+                <h2>Connecting Claude</h2>
+                <p>Claude connects to Enterfind through its <strong>custom connector</strong> support, using Enterfind's remote MCP endpoint. This is the simplest of the three: you add one URL.</p>
+
+                <div class="info-box">
+                    <strong>Requirements:</strong> a Claude plan that supports custom connectors, and Remote Access enabled on your Enterfind instance.
+                </div>
+
+                <h3>Your Enterfind connection URL</h3>
+                <p>With Remote Access enabled, your MCP endpoint is:</p>
+                <pre><code>https://remote-&lt;stage&gt;.enterfind.com/&lt;serverId&gt;/mcp</code></pre>
+                <p>Your Server ID and remote URL are on the <a href="settings.html">Settings</a> page under Remote Access.</p>
+
+                <h3>Steps</h3>
+                <ol>
+                    <li>In Claude, open the connectors settings and choose to add a custom connector.</li>
+                    <li>Paste your <code>/mcp</code> URL as the connector URL and save.</li>
+                    <li>Claude introspects the endpoint and its Enterfind tools become available in your conversations.</li>
+                </ol>
+                <p style="margin-top: 15px;">That's the whole setup. If the instance requires authentication, Claude will ask you for your API key when it first needs access (see the note above).</p>
+            </div>
+
+            <!-- ChatGPT -->
+            <div class="section provider" id="chatgpt">
+                <h2>Connecting ChatGPT</h2>
+                <p>ChatGPT connects to Enterfind as a <strong>Custom GPT Action</strong>. You give the GPT the URL of your instance's OpenAPI description, and ChatGPT learns how to call Enterfind's single GraphQL endpoint from that. Nothing is installed, and no code runs on your side — Enterfind already serves the description your GPT needs.</p>
+
+                <div class="info-box">
+                    <strong>Requirements:</strong> a ChatGPT plan that can create Custom GPTs (Plus, Pro, Team, or Enterprise), and Remote Access enabled on your Enterfind instance. ChatGPT reaches Enterfind over the public internet, so the instance must be accessible through its remote URL — a local or LAN address will not work.
+                </div>
+
+                <h3>Your Enterfind connection URL</h3>
+                <p>With Remote Access enabled, your instance publishes an OpenAPI description at:</p>
+                <pre><code>https://remote-&lt;stage&gt;.enterfind.com/&lt;serverId&gt;/openapi.json</code></pre>
+                <p>Your Server ID and full remote URL are shown on the <a href="settings.html">Settings</a> page under Remote Access. You can open the <code>/openapi.json</code> URL in a browser to confirm it returns a JSON document before pasting it into ChatGPT.</p>
+
+                <h3>Steps</h3>
+                <ol>
+                    <li>In ChatGPT, create a new GPT (<strong>Explore GPTs → Create</strong>, then open the <strong>Configure</strong> tab).</li>
+                    <li>Under <strong>Actions</strong>, add a new action and <strong>import</strong> your <code>/openapi.json</code> URL as the schema. ChatGPT fetches the description and lists a single operation, <code>executeGraphQL</code>.</li>
+                    <li>Leave authentication set to <strong>None</strong>. Enterfind's own auth is handled inside the request, not at this layer (see the note above).</li>
+                    <li>Save the GPT. Optionally give it a name like "Enterfind" and a short instruction such as <em>"Use the Enterfind action to search and retrieve my documents."</em></li>
+                </ol>
+                <p style="margin-top: 15px;">That's the whole setup. The GPT can now search your corpus, pull document metadata, and fetch content, all through the one action.</p>
+
+                <h3>If it doesn't work</h3>
+                <ul>
+                    <li><strong>The GPT answers from memory instead of searching.</strong> Tell it explicitly to use the Enterfind action, e.g. <em>"Search Enterfind for…"</em>. ChatGPT is less eager than some assistants to reach for a tool; a direct instruction fixes most cases.</li>
+                    <li><strong>Import fails or returns nothing.</strong> Open the <code>/openapi.json</code> URL in a browser. If it doesn't load there, the instance isn't reachable from the public internet — check that Remote Access is enabled and healthy.</li>
+                    <li><strong>"Not authorized" or empty results on a private instance.</strong> The GPT needs your API key; ask it to authenticate, and provide the key when prompted.</li>
+                </ul>
+            </div>
+
+            <!-- Gemini -->
+            <div class="section provider" id="gemini">
+                <h2>Connecting Gemini</h2>
+                <p>Gemini connects to Enterfind only through the <strong>Gemini CLI</strong> — the command-line tool — using Enterfind's remote MCP endpoint. The hosted Gemini apps (Gemini web, Gemini in Google Workspace) do not currently consume MCP servers, so there is no equivalent to Claude's connector or ChatGPT's Action there; the CLI is the path.</p>
+
+                <div class="info-box">
+                    <strong>Requirements:</strong> the Gemini CLI installed, and Remote Access enabled on your Enterfind instance.
+                </div>
+
+                <h3>Your Enterfind connection URL</h3>
+                <p>This is the same MCP endpoint Claude uses:</p>
+                <pre><code>https://remote-&lt;stage&gt;.enterfind.com/&lt;serverId&gt;/mcp</code></pre>
+                <p>Your Server ID and remote URL are on the <a href="settings.html">Settings</a> page under Remote Access.</p>
+
+                <h3>Steps</h3>
+                <p>The simplest way is to just ask the CLI to do it. Start the Gemini CLI and tell it, in plain language, to add an MCP server — give it a name like <code>enterfind</code> and your <code>/mcp</code> URL:</p>
+                <pre><code>Add an MCP server named enterfind at https://remote-&lt;stage&gt;.enterfind.com/&lt;serverId&gt;/mcp</code></pre>
+                <p>Gemini writes the entry to its <code>settings.json</code> and connects to it — no restart needed. Run <code>/mcp</code> to confirm Enterfind shows as connected and its tools are listed.</p>
+
+                <p style="margin-top: 15px;">If you prefer to configure it by hand, Gemini CLI reads its MCP servers from <code>~/.gemini/settings.json</code> (applies everywhere) or a project-local <code>.gemini/settings.json</code>. Add Enterfind under the <code>mcpServers</code> block, using the <code>httpUrl</code> field for the remote endpoint:</p>
+                <pre><code>{
+  "mcpServers": {
+    "enterfind": {
+      "httpUrl": "https://remote-&lt;stage&gt;.enterfind.com/&lt;serverId&gt;/mcp"
+    }
+  }
+}</code></pre>
+                <p>If the instance requires authentication, Gemini asks for your API key when it first needs access, the same as the other assistants (see the note at the top). There is no key to place in <code>settings.json</code>.</p>
+
+                <h3>If it doesn't work</h3>
+                <ul>
+                    <li><strong>Enterfind shows as disconnected.</strong> Run <code>/mcp</code> to see the error. Check the URL for typos and confirm the instance is reachable — open the <code>/mcp</code> URL host in a browser or <code>curl</code> it.</li>
+                    <li><strong>You edited <code>settings.json</code> by hand and nothing changed.</strong> Restart the CLI; it reads a hand-edited file only at startup. (Servers added by asking Gemini connect immediately, without a restart.)</li>
+                </ul>
+            </div>
+
+            <!-- Note -->
+            <div class="section">
+                <div class="warning-box">
+                    The assistants' own menus and navigation change over time, so exact labels and click paths may differ from what you see. Everything on the Enterfind side — the connection URLs, the operation name, and the authentication behavior — is stable.
+                </div>
+            </div>
+        </div>
+
+        <div class="footer">
+            <a href="mailto:info@enterfind.com">info@enterfind.com</a>
+            <p>Public AI Connectors for Enterfind Server</p>
+            <p style="margin-top: 10px; font-size: 0.9em;">
+                <a href="settings.html" style="color: #667eea; text-decoration: none;">Back to Settings</a>
+            </p>
+        </div>
+    </div>
+</body>
+</html>

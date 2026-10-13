@@ -1,0 +1,107 @@
+name: Cleanup CI Artifacts and Packages
+
+on:
+  schedule:
+    - cron: '0 3 * * *'  # Daily at 03:00 UTC
+  workflow_dispatch:
+
+permissions:
+  actions: write
+  packages: write
+  contents: write  # delete old GitHub Releases
+
+jobs:
+  cleanup-artifacts:
+    name: Delete old build artifacts (keep 3)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Delete old artifacts
+        uses: actions/github-script@v9
+        with:
+          script: |
+            const artifacts = await github.paginate(
+              github.rest.actions.listArtifactsForRepo,
+              { owner: context.repo.owner, repo: context.repo.repo, per_page: 100 }
+            );
+
+            const grouped = {};
+            for (const artifact of artifacts) {
+              if (!grouped[artifact.name]) grouped[artifact.name] = [];
+              grouped[artifact.name].push(artifact);
+            }
+
+            for (const [name, list] of Object.entries(grouped)) {
+              list.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+              const toDelete = list.slice(3);
+              for (const artifact of toDelete) {
+                core.info(`Deleting artifact "${name}" id=${artifact.id} created=${artifact.created_at}`);
+                await github.rest.actions.deleteArtifact({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  artifact_id: artifact.id,
+                });
+              }
+            }
+            core.info(`Done. Kept ${Object.values(grouped).reduce((s, l) => s + Math.min(l.length, 3), 0)} artifact(s).`);
+
+  cleanup-packages:
+    name: Delete old container image versions (keep 3)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Delete old package versions
+        uses: actions/delete-package-versions@v5
+        with:
+          package-name: enterfind-server-beta
+          package-type: container
+          min-versions-to-keep: 3
+          ignore-versions: '^latest$'
+
+  cleanup-releases:
+    name: Delete old jar releases (keep 10, keep their tags)
+    runs-on: ubuntu-latest
+    steps:
+      # Each release carries a ~335 MB jar. The v<version> tags stay, so every build's commit
+      # remains findable after its jar is gone.
+      - name: Delete old releases
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          gh release list --limit 1000 --json tagName,createdAt \
+            --jq '[.[] | select(.tagName | test("^v[0-9]"))] | sort_by(.createdAt) | reverse | .[10:] | .[].tagName' |
+          while read -r tag; do
+            echo "Deleting release $tag (tag kept)"
+            gh release delete "$tag" --yes
+          done
+
+  cleanup-caches:
+    name: Delete caches unused for 48 hours
+    runs-on: ubuntu-latest
+    steps:
+      - name: Delete stale caches
+        uses: actions/github-script@v9
+        with:
+          script: |
+            const cutoff = Date.now() - 48 * 60 * 60 * 1000;
+            const caches = await github.paginate(
+              github.rest.actions.getActionsCacheList,
+              { owner: context.repo.owner, repo: context.repo.repo, per_page: 100 }
+            );
+
+            let deleted = 0;
+            for (const cache of caches) {
+              const lastAccessed = cache.last_accessed_at
+                ? new Date(cache.last_accessed_at).getTime()
+                : 0;
+              if (lastAccessed >= cutoff) continue;
+
+              core.info(`Deleting cache id=${cache.id} key="${cache.key}" last_accessed=${cache.last_accessed_at ?? 'never'}`);
+              await github.rest.actions.deleteActionsCacheById({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                cache_id: cache.id,
+              });
+              deleted++;
+            }
+
+            core.info(`Done. Deleted ${deleted} stale cache(s).`);

@@ -1,0 +1,50 @@
+{
+	"name": "Enterfind Server Dev Container",
+	"build": {
+		"dockerfile": "Dockerfile",
+		"context": ".",
+		"args": {
+			"name": "enterfind-server-devcontainer"
+		}
+
+	},
+	"mounts": [
+		"source=${localEnv:M2_CACHE_SOURCE:enterfind-maven-cache},target=/root/.m2,type=${localEnv:M2_MOUNT_TYPE:volume}",
+		"source=${localEnv:MODELS_CACHE_SOURCE:enterfind-models-cache},target=/root/.enterfind/models,type=${localEnv:MODELS_MOUNT_TYPE:volume}",
+		"source=${localEnv:DJL_CACHE_SOURCE:enterfind-djl-cache},target=/root/.djl.ai,type=${localEnv:DJL_MOUNT_TYPE:volume}",
+		"source=enterfind-claude-config,target=/root/.claude,type=volume"
+	],
+	"containerEnv": {
+		"GIT_EDITOR": "code --wait"
+	},
+	"postCreateCommand": "bash -c 'echo \"Starting services...\" && echo \"Starting PostgreSQL...\" && sudo service postgresql status > /dev/null 2>&1 || sudo service postgresql start && echo \"Waiting for PostgreSQL...\" && sleep 2 && for i in {1..30}; do pg_isready -U postgres > /dev/null 2>&1 && echo \"PostgreSQL ready\" && break; sleep 1; done && echo \"Initializing test database...\" && sudo -u postgres psql -f .devcontainer/init-test-db.sql 2>/dev/null || echo \"Test database already exists\" && echo \"Starting Samba...\" && /usr/local/bin/start-samba.sh && echo \"Waiting for Samba...\" && sleep 2 && for i in {1..10}; do pgrep -f smbd > /dev/null && echo \"Samba ready\" && break; sleep 1; done && echo \"Starting MinIO...\" && /usr/local/bin/start-minio.sh && echo \"Waiting for MinIO...\" && sleep 2 && for i in {1..15}; do curl -sf http://localhost:9000/minio/health/live > /dev/null 2>&1 && echo \"MinIO ready\" && break; sleep 1; done'",
+	"appPort": [8080],
+	"forwardPorts": [8080],
+	"portsAttributes": {
+		"8080": {
+			"label": "Application (Spring Boot)",
+			"onAutoForward": "notify"
+		}
+	},
+	"customizations": {
+		"vscode": {
+			"extensions": [
+				"vscjava.vscode-java-pack",
+				"redhat.java",
+				"vscjava.vscode-maven",
+				"eamodio.gitlens"
+			],
+			"settings": {
+				"git.enabled": true,
+				"git.path": "/usr/bin/git",
+				"git.autorefresh": true,
+				"git.enableSmartCommit": true,
+				"git.confirmSync": false,
+				"git.autofetch": true,
+				"git.detectSubmodules": true,
+				"git.useConfigOnly": false,
+				"scm.defaultViewMode": "tree"
+			}
+		}
+	}
+}

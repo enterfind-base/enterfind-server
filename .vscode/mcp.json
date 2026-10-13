@@ -1,0 +1,8 @@
+{
+  "servers": {
+    "enterfind-local": {
+      "type": "http",
+      "url": "http://localhost:8080/mcp"
+    }
+  }
+}

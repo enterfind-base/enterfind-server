@@ -1,0 +1,165 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - master
+  workflow_dispatch:
+    inputs:
+      stage:
+        description: 'Deployment stage'
+        required: false
+        default: 'beta'
+
+permissions:
+  packages: write
+  contents: write  # v<version> tag and GitHub Release for the jar
+
+concurrency:
+  group: ci
+  cancel-in-progress: false
+
+env:
+  STAGE: ${{ github.event.inputs.stage || 'beta' }}
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: '26'
+
+      - name: Install Dev Container CLI
+        run: npm install -g @devcontainers/cli
+
+      # The one version for this build: Maven project version (and so app.version, the jar
+      # manifest and /actuator/info), the image tag, and - with a "v" prefix - the release tag.
+      # A re-run keeps its run_number, so refuse it once that version is released rather than
+      # overwrite a published image and jar.
+      - name: Set version
+        run: |
+          chmod +x dev.sh
+          VERSION=1.0.${{ github.run_number }}
+          if [ -n "$(git ls-remote --tags origin "refs/tags/v$VERSION")" ]; then
+            echo "::error::v$VERSION is already released; start a new run instead of re-running this one"
+            exit 1
+          fi
+          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+          echo "Building version $VERSION"
+
+      - name: Cache Maven dependencies
+        uses: actions/cache@v6
+        with:
+          path: /tmp/enterfind-m2-cache
+          key: m2-${{ runner.os }}-${{ hashFiles('**/pom.xml') }}
+          restore-keys: |
+            m2-${{ runner.os }}-
+            
+      # Mounted at /root/.enterfind/models, so this cache IS the model cache directory.
+      #
+      # The key must list every file that declares a model URL or pinned hash: the embedding model
+      # URL lives in FaceEmbeddingModelService and the detector pins in their own handlers. Getting
+      # this wrong is only a cache-hit-rate question, not a
+      # correctness one: cache directories are named for the SHA-256 of their contents, so a stale
+      # cache can only cost a re-download — it can never hand back the wrong weights.
+      - name: Cache face/ONNX models
+        uses: actions/cache@v6
+        with:
+          path: /tmp/enterfind-models-cache
+          key: models-${{ runner.os }}-${{ hashFiles('**/FaceEmbeddingModelService.java', '**/FaceDetectionTreatmentHandler.java', '**/ObjectDetectionTreatmentHandler.java', '**/FaceRecognitionTreatmentIntegrationTest.java') }}
+          restore-keys: |
+            models-${{ runner.os }}-
+
+      - name: Cache DJL native libs
+        uses: actions/cache@v6
+        with:
+          path: /tmp/enterfind-djl-cache
+          key: djl-${{ runner.os }}-${{ hashFiles('**/pom.xml') }}
+          restore-keys: |
+            djl-${{ runner.os }}-
+            
+      - name: Ensure cache dirs exist
+        run: mkdir -p /tmp/enterfind-m2-cache /tmp/enterfind-models-cache /tmp/enterfind-djl-cache
+
+      - name: Maven install (via devcontainer)
+        env:
+          M2_CACHE_SOURCE: /tmp/enterfind-m2-cache
+          M2_MOUNT_TYPE: bind
+          MODELS_CACHE_SOURCE: /tmp/enterfind-models-cache
+          MODELS_MOUNT_TYPE: bind
+          DJL_CACHE_SOURCE: /tmp/enterfind-djl-cache
+          DJL_MOUNT_TYPE: bind
+        run: ./dev.sh maven install -Drevision=${{ env.VERSION }}
+
+      - name: Verify jar version
+        run: |
+          JAR_VERSION=$(unzip -p target/enterfind-server.jar META-INF/MANIFEST.MF | sed -n 's/^Implementation-Version: *//p' | tr -d '\r')
+          if [ "$JAR_VERSION" != "$VERSION" ]; then
+            echo "::error::jar manifest says '$JAR_VERSION', expected '$VERSION'"
+            exit 1
+          fi
+          echo "Jar version $JAR_VERSION"
+
+      - name: Fix cache dir ownership for cache save
+        if: always()
+        run: sudo chown -R "$(id -u):$(id -g)" /tmp/enterfind-m2-cache /tmp/enterfind-models-cache /tmp/enterfind-djl-cache
+        
+      - name: Archive artifacts
+        if: success()
+        uses: actions/upload-artifact@v7
+        with:
+          name: build-artifacts
+          path: |
+            target/site/**
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push multi-arch Docker image
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: true
+          build-args: |
+            SPRING_PROFILES_ACTIVE=${{ env.STAGE }}
+          labels: |
+            org.opencontainers.image.version=${{ env.VERSION }}
+          tags: |
+            ghcr.io/enterfind-base/enterfind-server-${{ env.STAGE }}:${{ env.VERSION }}
+            ghcr.io/enterfind-base/enterfind-server-${{ env.STAGE }}:latest
+
+      # One release per build, tagged v<version> at this commit. GitHub marks the newest one
+      # "latest", so .../releases/latest/download/enterfind-server.jar is the stable download URL.
+      # The jar is published as built — the native stripping in the Dockerfile's jarprep stage
+      # applies only to the image. cleanup.yml prunes old releases but keeps their tags.
+      - name: Publish jar as GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          gh release create "v$VERSION" target/enterfind-server.jar \
+            --target "$GITHUB_SHA" \
+            --title "v$VERSION" \
+            --notes "Enterfind server $VERSION, built from $GITHUB_SHA."
+
+      - name: Cleanup devcontainer
+        if: always()
+        run: ./dev.sh remove || true

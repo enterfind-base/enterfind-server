@@ -1,0 +1,1364 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Data Source - EnterFind</title>
+    <link rel="icon" type="image/png" href="favicon.png">
+    <link rel="stylesheet" href="css/style.css">
+    <style>
+        .treatments-list {
+            margin-top: 1rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+        .treatment-item {
+            display: flex;
+            align-items: flex-start;
+            padding: 0.75rem;
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-sm);
+            transition: background-color 0.15s ease;
+        }
+        .treatment-item:hover {
+            background-color: var(--background);
+        }
+        .treatment-item input[type="checkbox"] {
+            margin-top: 0.25rem;
+            margin-right: 0.75rem;
+            cursor: pointer;
+        }
+        .treatment-item input[type="checkbox"]:disabled {
+            cursor: not-allowed;
+        }
+        .treatment-info {
+            flex: 1;
+        }
+        .treatment-name {
+            font-weight: 500;
+            margin-bottom: 0.25rem;
+        }
+        .treatment-description {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            margin-bottom: 0.25rem;
+        }
+        .treatment-date {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            font-style: italic;
+        }
+        .treatment-required {
+            font-size: 0.75rem;
+            color: var(--warning);
+            font-weight: 500;
+            margin-top: 0.25rem;
+        }
+        .form-card {
+            max-width: 600px;
+        }
+        .test-items-inline {
+            display: inline;
+            font-family: monospace;
+            font-size: 0.875rem;
+        }
+        .test-item-inline {
+            margin-right: 0.5rem;
+        }
+        .test-ellipsis {
+            color: var(--text-secondary);
+            margin-left: 0.25rem;
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="container">
+            <div class="navbar-left">
+                <a href="index.html" class="navbar-brand"><img src="enterfind_logo.jpeg" alt="EnterFind" style="height: 39px; vertical-align: middle;"></a>
+                <span id="server-version" class="navbar-version"></span>
+            </div>
+            <ul class="navbar-nav">
+                <li><a href="index.html">Search</a></li>
+                <li><a href="sources.html" class="active">Data Sources</a></li>
+                <li><a href="settings.html">Settings</a></li>
+                <li><a href="users.html">Users</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <!-- Page Header -->
+    <header class="page-header">
+        <div class="container">
+            <div>
+                <a href="sources.html" class="btn btn-secondary btn-sm" style="margin-bottom: 0.5rem;">← Back to Sources</a>
+                <h1 class="page-title" id="pageTitle">Data Source</h1>
+            </div>
+            <div id="actionButtons" style="display: none;">
+                <button id="scanBtn" class="btn btn-secondary">Scan Now</button>
+                <button id="clearDataBtn" class="btn btn-secondary" style="margin-left: 0.5rem;">Clear Data</button>
+                <button id="deleteBtn" class="btn btn-danger" style="margin-left: 0.5rem;">Delete</button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="container">
+        <div style="padding: 1.5rem 0;">
+            <div id="loadingState" class="loading" style="display: none;">
+                <div class="spinner"></div>
+            </div>
+
+            <!-- Modal Loading Overlay -->
+            <div id="modalLoading" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0, 0, 0, 0.5); z-index: 1000; align-items: center; justify-content: center;">
+                <div style="background: white; border-radius: var(--radius); padding: 2rem; box-shadow: var(--shadow-lg);">
+                    <div class="spinner" style="margin: 0 auto 1rem;"></div>
+                    <p style="color: var(--text-secondary); text-align: center;">Processing...</p>
+                </div>
+            </div>
+
+            <div id="errorState" class="alert alert-error" style="display: none;"></div>
+
+            <!-- Create/Edit Form -->
+            <div id="formContent" class="card form-card">
+                <div class="card-header">
+                    <h2 class="card-title" id="formTitle">New Data Source</h2>
+                </div>
+                <div class="card-body">
+                    <form id="sourceForm">
+                        <div class="form-group">
+                            <label class="form-label">Type</label>
+                            <select id="sourceType" class="form-select" required>
+                                <option value="LOCAL_FILESYSTEM">Local File System</option>
+                                <option value="REMOTE_FILESYSTEM">Remote File System (SMB)</option>
+                                <option value="S3_BUCKET">S3 Bucket</option>
+                            </select>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label class="form-label">Name</label>
+                            <input type="text" id="sourceName" class="form-input" required placeholder="Unique name for this data source">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label class="form-label">Schedule (optional)</label>
+                            <div style="display: flex; gap: 0.5rem; align-items: center;">
+                                <input type="text" id="cronPattern" class="form-input" placeholder="e.g., 0 0 * * * (daily at midnight)" style="flex: 1;">
+                                <button type="button" id="cronExplainBtn" class="btn btn-secondary btn-sm" style="display: none;">AI: Explain</button>
+                                <button type="button" id="cronSuggestBtn" class="btn btn-secondary btn-sm" style="display: none;">AI: Suggest</button>
+                            </div>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label class="form-label">Skip Files Pattern (optional)</label>
+                            <div style="display: flex; gap: 0.5rem; align-items: center;">
+                                <input type="text" id="skipFiles" class="form-input" placeholder="e.g., .*\.jpg|.*\.tmp (regex patterns to exclude)" style="flex: 1;">
+                                <button type="button" id="skipExplainBtn" class="btn btn-secondary btn-sm" style="display: none;">AI: Explain</button>
+                                <button type="button" id="skipSuggestBtn" class="btn btn-secondary btn-sm" style="display: none;">AI: Suggest</button>
+                            </div>
+                            <small style="color: var(--text-secondary); font-size: 0.75rem;">Files matching these regex patterns will be excluded from indexing</small>
+                        </div>
+                        
+                        <!-- Local File System Fields -->
+                        <div id="localFields" class="type-fields">
+                            <div class="form-group">
+                                <label class="form-label">Local Path</label>
+                                <input type="text" id="localPath" class="form-input" placeholder="/path/to/folder">
+                            </div>
+                        </div>
+                        
+                        <!-- Remote File System Fields -->
+                        <div id="remoteFields" class="type-fields" style="display: none;">
+                            <div class="form-group">
+                                <label class="form-label">Server</label>
+                                <input type="text" id="remoteServer" class="form-input" placeholder="server.example.com">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Domain (optional)</label>
+                                <input type="text" id="remoteDomain" class="form-input" placeholder="DOMAIN">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Username</label>
+                                <input type="text" id="remoteUsername" class="form-input" placeholder="username">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Password</label>
+                                <input type="password" id="remotePassword" class="form-input" placeholder="password">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Share Name</label>
+                                <input type="text" id="remoteShareName" class="form-input" placeholder="SharedFolder">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Path (optional)</label>
+                                <input type="text" id="remotePath" class="form-input" placeholder="subfolder/path">
+                            </div>
+                        </div>
+                        
+                        <!-- S3 Bucket Fields -->
+                        <div id="s3Fields" class="type-fields" style="display: none;">
+                            <div class="form-group">
+                                <label class="form-label">Bucket Name or URL</label>
+                                <input type="text" id="s3NameOrUrl" class="form-input" placeholder="my-bucket or https://...">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Access Key</label>
+                                <input type="text" id="s3AccessKey" class="form-input" placeholder="AKIAIOSFODNN7EXAMPLE">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Secret Key</label>
+                                <input type="password" id="s3SecretKey" class="form-input" placeholder="secret key">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Path (optional)</label>
+                                <input type="text" id="s3Path" class="form-input" placeholder="prefix/path">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Region (optional)</label>
+                                <input type="text" id="s3Region" class="form-input" placeholder="us-east-1">
+                            </div>
+                        </div>
+                        
+                        <div style="display: flex; gap: 0.75rem; margin-top: 1.5rem;">
+                            <button type="submit" id="saveBtn" class="btn btn-primary">Save</button>
+                            <a href="sources.html" class="btn btn-secondary">Cancel</a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            
+            <!-- View Mode Content (shown when editing) -->
+            <div id="viewContent" style="display: none;">
+                <!-- Source Details Card -->
+                <div class="card" style="margin-bottom: 1.5rem;">
+                    <div class="card-header">
+                        <h2 class="card-title">Details</h2>
+                    </div>
+                    <div class="card-body">
+                        <div id="sourceDetails" class="detail-grid">
+                            <!-- Read-only details will be populated -->
+                        </div>
+                        
+                        <!-- Editable fields -->
+                        <form id="inlineEditForm" style="margin-top: 1rem;">
+                            <div class="form-group">
+                                <label class="form-label">Schedule (optional)</label>
+                                <div style="display: flex; gap: 0.5rem; align-items: center;">
+                                    <input type="text" id="editCronPattern" class="form-input" placeholder="e.g., 0 0 * * * (daily at midnight)" style="flex: 1;">
+                                    <button type="button" id="editCronExplainBtn" class="btn btn-secondary btn-sm" style="display: none;">AI: Explain</button>
+                                    <button type="button" id="editCronSuggestBtn" class="btn btn-secondary btn-sm" style="display: none;">AI: Suggest</button>
+                                </div>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label class="form-label">Skip Files Pattern (optional)</label>
+                                <div style="display: flex; gap: 0.5rem; align-items: center;">
+                                    <input type="text" id="editSkipFiles" class="form-input" placeholder="e.g., .*\.jpg|.*\.tmp (regex patterns to exclude)" style="flex: 1;">
+                                    <button type="button" id="editSkipExplainBtn" class="btn btn-secondary btn-sm" style="display: none;">AI: Explain</button>
+                                    <button type="button" id="editSkipSuggestBtn" class="btn btn-secondary btn-sm" style="display: none;">AI: Suggest</button>
+                                </div>
+                                <small style="color: var(--text-secondary); font-size: 0.75rem;">Files matching these regex patterns will be excluded from indexing</small>
+                            </div>
+                            
+                            <!-- Local File System Fields -->
+                            <div id="editLocalFields" class="type-fields" style="display: none;">
+                                <div class="form-group">
+                                    <label class="form-label">Local Path</label>
+                                    <input type="text" id="editLocalPath" class="form-input" placeholder="/path/to/folder">
+                                </div>
+                            </div>
+                            
+                            <!-- Remote File System Fields -->
+                            <div id="editRemoteFields" class="type-fields" style="display: none;">
+                                <div class="form-group">
+                                    <label class="form-label">Server</label>
+                                    <input type="text" id="editRemoteServer" class="form-input" placeholder="server.example.com">
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Domain (optional)</label>
+                                    <input type="text" id="editRemoteDomain" class="form-input" placeholder="DOMAIN">
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Username</label>
+                                    <input type="text" id="editRemoteUsername" class="form-input" placeholder="username">
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Password</label>
+                                    <input type="password" id="editRemotePassword" class="form-input" placeholder="Leave empty to keep current">
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Share Name</label>
+                                    <input type="text" id="editRemoteShareName" class="form-input" placeholder="SharedFolder">
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Path (optional)</label>
+                                    <input type="text" id="editRemotePath" class="form-input" placeholder="subfolder/path">
+                                </div>
+                            </div>
+                            
+                            <!-- S3 Bucket Fields -->
+                            <div id="editS3Fields" class="type-fields" style="display: none;">
+                                <div class="form-group">
+                                    <label class="form-label">Bucket Name or URL</label>
+                                    <input type="text" id="editS3NameOrUrl" class="form-input" placeholder="my-bucket or https://...">
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Access Key</label>
+                                    <input type="text" id="editS3AccessKey" class="form-input" placeholder="AKIAIOSFODNN7EXAMPLE">
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Secret Key</label>
+                                    <input type="password" id="editS3SecretKey" class="form-input" placeholder="Leave empty to keep current">
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Path (optional)</label>
+                                    <input type="text" id="editS3Path" class="form-input" placeholder="prefix/path">
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Region (optional)</label>
+                                    <input type="text" id="editS3Region" class="form-input" placeholder="us-east-1">
+                                </div>
+                            </div>
+                            
+                            <div style="margin-top: 1rem;">
+                                <button type="submit" id="inlineSaveBtn" class="btn btn-primary">Save Changes</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+                
+                <!-- Stats Card -->
+                <div class="card" style="margin-bottom: 1.5rem;">
+                    <div class="card-header">
+                        <h2 class="card-title">Statistics</h2>
+                        <button id="refreshStatsBtn" class="btn btn-secondary btn-sm">Refresh</button>
+                    </div>
+                    <div class="card-body">
+                        <div id="statsLoading" class="loading" style="display: none;">
+                            <div class="spinner"></div>
+                        </div>
+                        <div id="statsContent">
+                            <div class="stats-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 1rem;">
+                                <div class="stat-item" style="text-align: center; padding: 1rem; background: var(--background); border-radius: var(--radius);">
+                                    <div id="statTotalItems" class="stat-value" style="font-size: 1.5rem; font-weight: 600;">-</div>
+                                    <div class="stat-label" style="font-size: 0.75rem; color: var(--text-secondary);">Total Items</div>
+                                </div>
+                                <div class="stat-item" style="text-align: center; padding: 1rem; background: var(--background); border-radius: var(--radius);">
+                                    <div id="statPreviewsToDo" class="stat-value" style="font-size: 1.5rem; font-weight: 600; color: var(--info);">-</div>
+                                    <div class="stat-label" style="font-size: 0.75rem; color: var(--text-secondary);">Previews To Do</div>
+                                </div>
+                                <div class="stat-item" style="text-align: center; padding: 1rem; background: var(--background); border-radius: var(--radius);">
+                                    <div id="statFoldersWithProblems" class="stat-value" style="font-size: 1.5rem; font-weight: 600; color: var(--warning);">-</div>
+                                    <div class="stat-label" style="font-size: 0.75rem; color: var(--text-secondary);">Folders With Problems</div>
+                                </div>
+                                <div class="stat-item" style="text-align: center; padding: 1rem; background: var(--background); border-radius: var(--radius);">
+                                    <div id="statNew" class="stat-value" style="font-size: 1.5rem; font-weight: 600; color: var(--info);">-</div>
+                                    <div class="stat-label" style="font-size: 0.75rem; color: var(--text-secondary);">New</div>
+                                </div>
+                                <div class="stat-item" style="text-align: center; padding: 1rem; background: var(--background); border-radius: var(--radius);">
+                                    <div id="statUpdated" class="stat-value" style="font-size: 1.5rem; font-weight: 600; color: var(--warning);">-</div>
+                                    <div class="stat-label" style="font-size: 0.75rem; color: var(--text-secondary);">Updated</div>
+                                </div>
+                                <div class="stat-item" style="text-align: center; padding: 1rem; background: var(--background); border-radius: var(--radius);">
+                                    <div id="statInProgress" class="stat-value" style="font-size: 1.5rem; font-weight: 600; color: var(--primary);">-</div>
+                                    <div class="stat-label" style="font-size: 0.75rem; color: var(--text-secondary);">In Progress</div>
+                                </div>
+                                <div class="stat-item" style="text-align: center; padding: 1rem; background: var(--background); border-radius: var(--radius);">
+                                    <div id="statDone" class="stat-value" style="font-size: 1.5rem; font-weight: 600; color: var(--success);">-</div>
+                                    <div class="stat-label" style="font-size: 0.75rem; color: var(--text-secondary);">Done</div>
+                                </div>
+                                <div class="stat-item" style="text-align: center; padding: 1rem; background: var(--background); border-radius: var(--radius);">
+                                    <div id="statFailed" class="stat-value" style="font-size: 1.5rem; font-weight: 600; color: var(--danger);">-</div>
+                                    <div class="stat-label" style="font-size: 0.75rem; color: var(--text-secondary);">Failed</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Treatments Card -->
+                <div class="card">
+                    <div class="card-header">
+                        <h2 class="card-title">Treatments</h2>
+                    </div>
+                    <div class="card-body">
+                        <p style="margin-bottom: 1rem; color: var(--text-secondary); font-size: 0.875rem;">
+                            Select which treatments to apply to files in this data source. NAME_AND_PATH is required and always enabled.
+                        </p>
+                        <div id="treatmentsList" class="treatments-list">
+                            <!-- Treatments will be populated -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Test Connection Card -->
+                <div class="card" style="margin-top: 1.5rem;">
+                    <div class="card-header">
+                        <h2 class="card-title">Test Connection</h2>
+                        <button id="testConnectionBtn" class="btn btn-secondary btn-sm">Test</button>
+                    </div>
+                    <div class="card-body">
+                        <p style="margin-bottom: 1rem; color: var(--text-secondary);">
+                            Test the connection to this data source and list files at the root level.
+                        </p>
+                        <div id="testLoading" class="loading" style="display: none;">
+                            <div class="spinner"></div>
+                        </div>
+                        <div id="testResult" style="display: none;">
+                            <div id="testStatus" class="alert"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Upload File Card -->
+                <div class="card" style="margin-top: 1.5rem;">
+                    <div class="card-header">
+                        <h2 class="card-title">Upload File</h2>
+                    </div>
+                    <div class="card-body">
+                        <p style="margin-bottom: 1rem; color: var(--text-secondary);">
+                            Upload a file directly into this data source.
+                        </p>
+                        <form id="uploadFileForm">
+                            <div class="form-group">
+                                <label class="form-label">File</label>
+                                <input type="file" id="uploadFileInput" class="form-input" required>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Path in datasource (optional)</label>
+                                <input type="text" id="uploadPathInput" class="form-input" placeholder="folder/subfolder">
+                                <small style="color: var(--text-secondary); font-size: 0.75rem;">Slash-separated folder path where the file will be placed. Leave empty to upload to root.</small>
+                            </div>
+                            <div id="uploadStatus" style="display: none; margin-bottom: 1rem;"></div>
+                            <button type="submit" id="uploadFileBtn" class="btn btn-primary">Upload</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script type="module">
+        import { $, escapeHtml, formatDate, showAlert, showConfirm, showPrompt } from './js/util.js';
+        import {
+            getDataSource,
+            getDataSourceStats,
+            subscribeToDataSourceStats,
+            createLocalFileSystemDataSource,
+            createRemoteFileSystemDataSource,
+            createS3BucketDataSource,
+            updateLocalFileSystemDataSource,
+            updateRemoteFileSystemDataSource,
+            updateS3BucketDataSource,
+            deleteDataSource,
+            clearDataSourceData,
+            scanDataSource,
+            getAvailableTreatments,
+            getDataSourceTreatments,
+            addDataSourceTreatment,
+            removeDataSourceTreatment,
+            getFaceEmbeddingModel,
+            testDataSource,
+            isAiConfigured,
+            interpretCronExpression,
+            explainCronExpression,
+            interpretSkipPattern,
+            explainSkipPattern,
+            fetchServerTimezone
+        } from './js/api.js';
+        import { checkAuthAndRedirect, getAuthToken } from './js/auth.js';
+        import { initFooter } from './js/footer.js';
+        import { getUrl } from './js/remote.js';
+
+        // Get parameters from URL
+        const params = new URLSearchParams(window.location.search);
+        const isNew = params.get('new') === 'true';
+        const sourceName = decodeURIComponent(params.get('name') || '');
+        const sourceType = params.get('type') || '';
+
+        let currentSource = null;
+        let aiEnabled = false;
+        let availableTreatments = [];
+        let availableTreatmentsFailed = false;
+        let treatmentLabels = {};
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            // Auth check
+            await checkAuthAndRedirect();
+            initFooter();
+            // Fetch server timezone for proper date formatting
+            fetchServerTimezone();
+
+            // Fetch available treatments
+            try {
+                availableTreatments = await getAvailableTreatments();
+                // Build label map for easy lookup
+                treatmentLabels = availableTreatments.reduce((map, t) => {
+                    map[t.name] = t.label;
+                    return map;
+                }, {});
+            } catch (error) {
+                console.error('[TREATMENTS] Failed to fetch available treatments:', error);
+                availableTreatmentsFailed = true;
+            }
+
+            // Check if any AI provider is configured
+            try {
+                aiEnabled = await isAiConfigured();
+                console.log('[AI] AI provider configured:', aiEnabled);
+                if (aiEnabled) {
+                    showAIButtons();
+                }
+            } catch (error) {
+                console.error('[AI] Failed to check AI configuration:', error);
+                aiEnabled = false;
+            }
+
+            // Type field change handler
+            $('sourceType').addEventListener('change', toggleTypeFields);
+
+            // Form submission
+            $('sourceForm').addEventListener('submit', handleSubmit);
+
+            if (isNew) {
+                // Create new source mode
+                $('pageTitle').textContent = 'New Data Source';
+                $('formTitle').textContent = 'Create Data Source';
+                $('formContent').style.display = 'block';
+                $('viewContent').style.display = 'none';
+                $('actionButtons').style.display = 'none';
+                document.title = 'New Data Source - EnterFind';
+            } else if (sourceName && sourceType) {
+                // View/Edit existing source mode
+                $('scanBtn').addEventListener('click', triggerScan);
+                $('clearDataBtn').addEventListener('click', confirmClearData);
+                $('deleteBtn').addEventListener('click', confirmDelete);
+                $('inlineEditForm').addEventListener('submit', handleInlineUpdate);
+                $('refreshStatsBtn').addEventListener('click', loadStats);
+                $('testConnectionBtn').addEventListener('click', runTestConnection);
+                $('uploadFileForm').addEventListener('submit', handleUploadFile);
+
+                loadSource();
+            } else {
+                showError('No data source specified');
+            }
+        });
+
+        function showAIButtons() {
+            // Show AI buttons for create form - Cron
+            const explainBtn = $('cronExplainBtn');
+            const suggestBtn = $('cronSuggestBtn');
+            if (explainBtn) {
+                explainBtn.style.display = 'block';
+                explainBtn.addEventListener('click', () => handleExplainCron('cronPattern'));
+            }
+            if (suggestBtn) {
+                suggestBtn.style.display = 'block';
+                suggestBtn.addEventListener('click', () => handleSuggestCron('cronPattern'));
+            }
+
+            // Show AI buttons for edit form - Cron
+            const editExplainBtn = $('editCronExplainBtn');
+            const editSuggestBtn = $('editCronSuggestBtn');
+            if (editExplainBtn) {
+                editExplainBtn.style.display = 'block';
+                editExplainBtn.addEventListener('click', () => handleExplainCron('editCronPattern'));
+            }
+            if (editSuggestBtn) {
+                editSuggestBtn.style.display = 'block';
+                editSuggestBtn.addEventListener('click', () => handleSuggestCron('editCronPattern'));
+            }
+
+            // Show AI buttons for create form - Skip Pattern
+            const skipExplainBtn = $('skipExplainBtn');
+            const skipSuggestBtn = $('skipSuggestBtn');
+            if (skipExplainBtn) {
+                skipExplainBtn.style.display = 'block';
+                skipExplainBtn.addEventListener('click', () => handleExplainSkip('skipFiles'));
+            }
+            if (skipSuggestBtn) {
+                skipSuggestBtn.style.display = 'block';
+                skipSuggestBtn.addEventListener('click', () => handleSuggestSkip('skipFiles'));
+            }
+
+            // Show AI buttons for edit form - Skip Pattern
+            const editSkipExplainBtn = $('editSkipExplainBtn');
+            const editSkipSuggestBtn = $('editSkipSuggestBtn');
+            if (editSkipExplainBtn) {
+                editSkipExplainBtn.style.display = 'block';
+                editSkipExplainBtn.addEventListener('click', () => handleExplainSkip('editSkipFiles'));
+            }
+            if (editSkipSuggestBtn) {
+                editSkipSuggestBtn.style.display = 'block';
+                editSkipSuggestBtn.addEventListener('click', () => handleSuggestSkip('editSkipFiles'));
+            }
+        }
+
+        function showModalLoading(show) {
+            const modal = $('modalLoading');
+            if (show) {
+                modal.style.display = 'flex';
+            } else {
+                modal.style.display = 'none';
+            }
+        }
+
+        async function handleExplainCron(inputId) {
+            const cronPattern = $(inputId).value.trim();
+            if (!cronPattern) {
+                await showAlert('Please enter a cron pattern first');
+                return;
+            }
+
+            showModalLoading(true);
+            try {
+                const result = await explainCronExpression(cronPattern);
+                if (result && result.naturalLanguageExplanation) {
+                    await showAlert(`Explanation:\n\n${result.naturalLanguageExplanation}`);
+                } else {
+                    await showAlert('Could not generate explanation for this cron pattern');
+                }
+            } catch (error) {
+                await showAlert(`Failed to explain cron pattern: ${error.message || 'Unknown error'}`);
+            } finally {
+                showModalLoading(false);
+            }
+        }
+
+        async function handleSuggestCron(inputId) {
+            const userInput = await showPrompt('Enter a description of when you want the schedule to run:\n(e.g., "every 2 hours", "daily at midnight", "every Monday at 9am")');
+            if (!userInput || !userInput.trim()) {
+                return;
+            }
+
+            showModalLoading(true);
+            try {
+                const result = await interpretCronExpression(userInput.trim());
+                console.log('[AI SUGGEST CRON]', { userInput, result });
+                if (result && result.cronExpression) {
+                    $(inputId).value = result.cronExpression;
+                    await showAlert(`Generated cron pattern:\n${result.cronExpression}`);
+                } else {
+                    await showAlert('Could not generate a cron pattern from your description.\n\nYou entered: ' + userInput);
+                }
+            } catch (error) {
+                await showAlert(`Failed to generate cron pattern: ${error.message || 'Unknown error'}`);
+            } finally {
+                showModalLoading(false);
+            }
+        }
+
+        async function handleExplainSkip(inputId) {
+            const skipPattern = $(inputId).value.trim();
+            if (!skipPattern) {
+                await showAlert('Please enter a skip pattern first');
+                return;
+            }
+
+            showModalLoading(true);
+            try {
+                const result = await explainSkipPattern(skipPattern);
+                if (result && result.naturalLanguageExplanation) {
+                    await showAlert(`Explanation:\n\n${result.naturalLanguageExplanation}`);
+                } else {
+                    await showAlert('Could not generate explanation for this skip pattern');
+                }
+            } catch (error) {
+                await showAlert(`Failed to explain skip pattern: ${error.message || 'Unknown error'}`);
+            } finally {
+                showModalLoading(false);
+            }
+        }
+
+        async function handleSuggestSkip(inputId) {
+            const userInput = await showPrompt('Enter a description of files you want to skip:\n(e.g., "all jpg and png files", "all image files", "temporary files")');
+            if (!userInput || !userInput.trim()) {
+                return;
+            }
+
+            showModalLoading(true);
+            try {
+                const result = await interpretSkipPattern(userInput.trim());
+                console.log('[AI SUGGEST SKIP]', { userInput, result });
+                if (result && result.skipPattern) {
+                    $(inputId).value = result.skipPattern;
+                    await showAlert(`Generated skip pattern:\n${result.skipPattern}`);
+                } else {
+                    await showAlert('Could not generate a skip pattern from your description.\n\nYou entered: ' + userInput);
+                }
+            } catch (error) {
+                await showAlert(`Failed to generate skip pattern: ${error.message || 'Unknown error'}`);
+            } finally {
+                showModalLoading(false);
+            }
+        }
+
+        function toggleTypeFields() {
+            const type = $('sourceType').value;
+            $('localFields').style.display = type === 'LOCAL_FILESYSTEM' ? 'block' : 'none';
+            $('remoteFields').style.display = type === 'REMOTE_FILESYSTEM' ? 'block' : 'none';
+            $('s3Fields').style.display = type === 'S3_BUCKET' ? 'block' : 'none';
+        }
+
+        async function loadSource() {
+            $('loadingState').style.display = 'flex';
+            try {
+                currentSource = await getDataSource(sourceName, sourceType);
+                if (!currentSource) {
+                    showError('Data source not found');
+                    return;
+                }
+                
+                await renderViewMode();
+                await loadTreatments();
+                await loadStats();
+                
+                // Start subscription for live updates
+                startStatsSubscription();
+                
+            } catch (error) {
+                showError('Failed to load data source: ' + error.message);
+            } finally {
+                $('loadingState').style.display = 'none';
+            }
+        }
+
+        async function renderViewMode() {
+            $('formContent').style.display = 'none';
+            $('viewContent').style.display = 'block';
+            $('actionButtons').style.display = 'block';
+            $('pageTitle').textContent = currentSource.name;
+            document.title = `${currentSource.name} - EnterFind`;
+
+            // Update scan button state based on status
+            const scanBtn = $('scanBtn');
+            if (currentSource.status === 'SCANNING') {
+                scanBtn.disabled = true;
+                scanBtn.textContent = 'Scanning...';
+            } else {
+                scanBtn.disabled = false;
+                scanBtn.textContent = 'Scan Now';
+            }
+
+            // Read-only details
+            const details = [
+                { label: 'Name', value: currentSource.name },
+                { label: 'Type', value: formatType(currentSource.type) },
+                { label: 'Status', value: formatStatus(currentSource.status), isHtml: true },
+                { label: 'Created', value: formatDate(currentSource.dateCreated) },
+                { label: 'Last Scanned', value: formatDate(currentSource.dateLastScanned) || 'Never' },
+                { label: 'Skip Files', value: currentSource.skipFiles || 'None' }
+            ];
+
+            $('sourceDetails').innerHTML = details.map(d => `
+                <div class="detail-label">${d.label}</div>
+                <div class="detail-value">${d.isHtml ? d.value : escapeHtml(d.value)}</div>
+            `).join('');
+            
+            // Populate editable fields
+            $('editSkipFiles').value = currentSource.skipFiles || '';
+            $('editCronPattern').value = currentSource.cronPattern || '';
+
+            // Show correct type-specific fields and populate them
+            $('editLocalFields').style.display = 'none';
+            $('editRemoteFields').style.display = 'none';
+            $('editS3Fields').style.display = 'none';
+            
+            switch (currentSource.type) {
+                case 'LOCAL_FILESYSTEM':
+                    $('editLocalFields').style.display = 'block';
+                    $('editLocalPath').value = currentSource.localPath || '';
+                    break;
+                case 'REMOTE_FILESYSTEM':
+                    $('editRemoteFields').style.display = 'block';
+                    $('editRemoteServer').value = currentSource.server || '';
+                    $('editRemoteDomain').value = currentSource.domain || '';
+                    $('editRemoteUsername').value = currentSource.username || '';
+                    $('editRemoteShareName').value = currentSource.shareName || '';
+                    $('editRemotePath').value = currentSource.path || '';
+                    $('editRemotePassword').value = '';
+                    break;
+                case 'S3_BUCKET':
+                    $('editS3Fields').style.display = 'block';
+                    $('editS3NameOrUrl').value = currentSource.nameOrUrl || '';
+                    $('editS3AccessKey').value = currentSource.accessKey || '';
+                    $('editS3Path').value = currentSource.path || '';
+                    $('editS3Region').value = currentSource.region || '';
+                    $('editS3SecretKey').value = '';
+                    break;
+            }
+        }
+
+        // Update only status-related display elements (used by subscription)
+        function updateStatusDisplay() {
+            // Update scan button state
+            const scanBtn = $('scanBtn');
+            if (currentSource.status === 'SCANNING') {
+                scanBtn.disabled = true;
+                scanBtn.textContent = 'Scanning...';
+            } else {
+                scanBtn.disabled = false;
+                scanBtn.textContent = 'Scan Now';
+            }
+            
+            // Update status in details grid
+            const statusCell = $('sourceDetails').querySelector('.detail-value:nth-child(6)');
+            if (statusCell) {
+                statusCell.innerHTML = formatStatus(currentSource.status);
+            }
+        }
+
+        // Update only last scanned date display (used by subscription)
+        function updateLastScannedDisplay() {
+            const lastScannedCell = $('sourceDetails').querySelector('.detail-value:nth-child(10)');
+            if (lastScannedCell) {
+                lastScannedCell.textContent = formatDate(currentSource.dateLastScanned) || 'Never';
+            }
+        }
+
+        async function handleInlineUpdate(e) {
+            e.preventDefault();
+
+            const saveBtn = $('inlineSaveBtn');
+            saveBtn.disabled = true;
+            saveBtn.textContent = 'Saving...';
+
+            try {
+                // Use empty string instead of null for cronPattern so backend can clear it
+                const cronPattern = $('editCronPattern').value.trim() || '';
+                const skipFiles = $('editSkipFiles').value.trim() || null;
+                
+                switch (currentSource.type) {
+                    case 'LOCAL_FILESYSTEM':
+                        await updateLocalFileSystemDataSource(sourceName, {
+                            cronPattern,
+                            skipFiles,
+                            localPath: $('editLocalPath').value.trim() || null
+                        });
+                        break;
+                        
+                    case 'REMOTE_FILESYSTEM':
+                        const password = $('editRemotePassword').value;
+                        await updateRemoteFileSystemDataSource(sourceName, {
+                            cronPattern,
+                            skipFiles,
+                            server: $('editRemoteServer').value.trim() || null,
+                            domain: $('editRemoteDomain').value.trim() || null,
+                            username: $('editRemoteUsername').value.trim() || null,
+                            password: password || null,
+                            shareName: $('editRemoteShareName').value.trim() || null,
+                            path: $('editRemotePath').value.trim() || null
+                        });
+                        break;
+                        
+                    case 'S3_BUCKET':
+                        const secretKey = $('editS3SecretKey').value;
+                        await updateS3BucketDataSource(sourceName, {
+                            cronPattern,
+                            skipFiles,
+                            nameOrUrl: $('editS3NameOrUrl').value.trim() || null,
+                            accessKey: $('editS3AccessKey').value.trim() || null,
+                            secretKey: secretKey || null,
+                            path: $('editS3Path').value.trim() || null,
+                            region: $('editS3Region').value.trim() || null
+                        });
+                        break;
+                }
+
+                await loadSource();
+            } catch (error) {
+                await showAlert('Failed to save: ' + error.message);
+            } finally {
+                saveBtn.disabled = false;
+                saveBtn.textContent = 'Save Changes';
+            }
+        }
+
+        async function handleSubmit(e) {
+            e.preventDefault();
+
+            const type = $('sourceType').value;
+            const name = $('sourceName').value.trim();
+            const cronPattern = $('cronPattern').value.trim() || '';
+            const skipFiles = $('skipFiles').value.trim() || null;
+            
+            if (!name) {
+                await showAlert('Please enter a name');
+                return;
+            }
+            
+            const saveBtn = $('saveBtn');
+            saveBtn.disabled = true;
+            saveBtn.textContent = 'Saving...';
+
+            try {
+                await createSource(type, name, cronPattern, skipFiles);
+                window.location.href = `source.html?name=${encodeURIComponent(name)}&type=${type}`;
+            } catch (error) {
+                await showAlert('Failed to save: ' + error.message);
+            } finally {
+                saveBtn.disabled = false;
+                saveBtn.textContent = 'Save';
+            }
+        }
+
+        async function createSource(type, name, cronPattern, skipFiles) {
+            switch (type) {
+                case 'LOCAL_FILESYSTEM':
+                    const localPath = $('localPath').value.trim();
+                    if (!localPath) throw new Error('Local path is required');
+                    await createLocalFileSystemDataSource({ name, cronPattern, skipFiles, localPath });
+                    break;
+                    
+                case 'REMOTE_FILESYSTEM':
+                    const server = $('remoteServer').value.trim();
+                    const username = $('remoteUsername').value.trim();
+                    const password = $('remotePassword').value;
+                    const shareName = $('remoteShareName').value.trim();
+                    if (!server || !username || !password || !shareName) {
+                        throw new Error('Server, username, password, and share name are required');
+                    }
+                    await createRemoteFileSystemDataSource({
+                        name,
+                        cronPattern,
+                        skipFiles,
+                        server,
+                        domain: $('remoteDomain').value.trim() || null,
+                        username,
+                        password,
+                        shareName,
+                        path: $('remotePath').value.trim() || null
+                    });
+                    break;
+                    
+                case 'S3_BUCKET':
+                    const nameOrUrl = $('s3NameOrUrl').value.trim();
+                    const accessKey = $('s3AccessKey').value.trim();
+                    const secretKey = $('s3SecretKey').value;
+                    if (!nameOrUrl || !accessKey || !secretKey) {
+                        throw new Error('Bucket name, access key, and secret key are required');
+                    }
+                    await createS3BucketDataSource({
+                        name,
+                        cronPattern,
+                        skipFiles,
+                        nameOrUrl,
+                        accessKey,
+                        secretKey,
+                        path: $('s3Path').value.trim() || null,
+                        region: $('s3Region').value.trim() || null
+                    });
+                    break;
+            }
+        }
+
+        // Whether an instance-global embedding model is selected. FACE_RECOGNITION cannot be enabled
+        // without one, and an already-enabled recognition treatment stalls until one exists.
+        let faceModelReady = false;
+
+        async function loadTreatments() {
+            try {
+                try {
+                    const faceModel = await getFaceEmbeddingModel();
+                    faceModelReady = faceModel && faceModel.mode !== 'NONE';
+                } catch (e) {
+                    faceModelReady = false;
+                }
+                const treatments = await getDataSourceTreatments(sourceName, sourceType);
+                renderTreatments(treatments);
+            } catch (error) {
+                console.error('Failed to load treatments:', error);
+                $('treatmentsList').innerHTML = 
+                    '<p class="alert alert-error">Failed to load treatments</p>';
+            }
+        }
+
+        async function loadStats() {
+            $('statsLoading').style.display = 'flex';
+            $('statsContent').style.opacity = '0.5';
+            try {
+                const stats = await getDataSourceStats(sourceName, sourceType);
+                renderStats(stats);
+            } catch (error) {
+                console.error('Failed to load stats:', error);
+                $('statsContent').innerHTML = 
+                    '<p class="alert alert-error">Failed to load statistics</p>';
+            } finally {
+                $('statsLoading').style.display = 'none';
+                $('statsContent').style.opacity = '1';
+            }
+        }
+
+        function renderStats(stats) {
+            if (!stats) {
+                $('statsContent').innerHTML = 
+                    '<p class="empty-state" style="padding: 1rem;">No statistics available</p>';
+                return;
+            }
+
+            $('statTotalItems').textContent = stats.totalItems.toLocaleString();
+            $('statPreviewsToDo').textContent = (stats.previewsToDo || 0).toLocaleString();
+            $('statFoldersWithProblems').textContent = (stats.foldersWithProblems || 0).toLocaleString();
+            
+            // Create a map for easy lookup
+            const statusMap = {};
+            stats.treatmentStatusCounts.forEach(sc => {
+                statusMap[sc.status] = sc.count;
+            });
+
+            $('statNew').textContent = (statusMap['NEW'] || 0).toLocaleString();
+            $('statUpdated').textContent = (statusMap['UPDATED'] || 0).toLocaleString();
+            $('statInProgress').textContent = (statusMap['INPROGRESS'] || 0).toLocaleString();
+            $('statDone').textContent = (statusMap['DONE'] || 0).toLocaleString();
+            $('statFailed').textContent = (statusMap['FAILED'] || 0).toLocaleString();
+        }
+
+        // Subscription management
+        let statsSubscription = null;
+
+        function startStatsSubscription() {
+            if (statsSubscription) return; // Already subscribed
+
+            console.log('Starting stats subscription for', sourceName, sourceType);
+
+            try {
+                statsSubscription = subscribeToDataSourceStats(
+                    sourceName,
+                    sourceType,
+                    2, // Update interval in seconds
+                    (stats) => {
+                        // Update stats on each subscription message
+                        renderStats(stats);
+                        
+                        // Update status if changed
+                        if (currentSource && stats.dataSourceStatus !== currentSource.status) {
+                            console.log('Status changed from', currentSource.status, 'to', stats.dataSourceStatus);
+                            currentSource.status = stats.dataSourceStatus;
+                            updateStatusDisplay();
+                        }
+                        
+                        // Update dateLastScanned if changed
+                        if (currentSource && stats.dateLastScanned !== currentSource.dateLastScanned) {
+                            console.log('Date last scanned changed from', currentSource.dateLastScanned, 'to', stats.dateLastScanned);
+                            currentSource.dateLastScanned = stats.dateLastScanned;
+                            updateLastScannedDisplay();
+                        }
+                        
+                        console.log('Received stats update');
+                    },
+                    (error) => {
+                        console.error('Subscription error:', error);
+                        statsSubscription = null;
+                    }
+                );
+
+                console.log('Stats subscription started');
+            } catch (error) {
+                console.error('Failed to start subscription:', error);
+                statsSubscription = null;
+            }
+        }
+
+        function stopStatsSubscription() {
+            if (!statsSubscription) return;
+
+            console.log('Stopping stats subscription');
+            statsSubscription(); // Call unsubscribe function
+            statsSubscription = null;
+            console.log('Stats subscription stopped');
+        }
+
+
+
+        function renderTreatments(currentTreatments) {
+            if (availableTreatmentsFailed) {
+                $('treatmentsList').innerHTML =
+                    '<p class="alert alert-error">Failed to load available treatments</p>';
+                return;
+            }
+            if (!availableTreatments || availableTreatments.length === 0) {
+                $('treatmentsList').innerHTML =
+                    '<p class="empty-state" style="padding: 1rem;">No treatments available</p>';
+                return;
+            }
+            
+            // Create a set of enabled treatment names for quick lookup
+            const enabledSet = new Set((currentTreatments || []).map(t => t.treatment));
+            
+            // Map to get treatment dates
+            const treatmentDates = {};
+            (currentTreatments || []).forEach(t => {
+                treatmentDates[t.treatment] = t.dateCreated;
+            });
+            
+            // Render all available treatments with checkboxes
+            $('treatmentsList').innerHTML = availableTreatments.map(treatment => {
+                const isEnabled = enabledSet.has(treatment.name);
+                const isRequired = treatment.name === 'NAME_AND_PATH';
+                const dateAdded = treatmentDates[treatment.name];
+
+                // Recognition needs an instance-global embedding model only the operator can supply.
+                // Disable-and-explain rather than hide, so an operator still learns the feature exists.
+                // The checkbox is only blocked from being *turned on*; an already-enabled treatment
+                // stays interactive (so it can be removed) but shows a blocker beside its stalled count.
+                const recognitionBlocked = treatment.name === 'FACE_RECOGNITION' && !faceModelReady;
+                const disableToggle = isRequired || (recognitionBlocked && !isEnabled);
+
+                return `
+                    <div class="treatment-item">
+                        <input
+                            type="checkbox"
+                            id="treatment_${treatment.name}"
+                            data-treatment="${treatment.name}"
+                            ${isEnabled ? 'checked' : ''}
+                            ${disableToggle ? 'disabled' : ''}
+                            onchange="window.handleTreatmentToggle(this)"
+                        />
+                        <label for="treatment_${treatment.name}" style="flex: 1; cursor: ${disableToggle ? 'not-allowed' : 'pointer'};">
+                            <div class="treatment-info">
+                                <div class="treatment-name">${escapeHtml(treatment.label)}</div>
+                                <div class="treatment-description">${escapeHtml(treatment.description)}</div>
+                                ${isEnabled && dateAdded ? `<div class="treatment-date">Added: ${formatDate(dateAdded)}</div>` : ''}
+                                ${isRequired ? '<div class="treatment-required">⚠ Required (always enabled)</div>' : ''}
+                                ${recognitionBlocked ? '<div class="treatment-required">⚠ Requires an embedding model — <a href="settings.html">configure in Settings</a>' + (isEnabled ? ' (recognition is paused: no model selected)' : '') + '</div>' : ''}
+                            </div>
+                        </label>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // Handle treatment checkbox toggle
+        window.handleTreatmentToggle = async function(checkbox) {
+            const treatment = checkbox.dataset.treatment;
+            const isChecked = checkbox.checked;
+            const treatmentInfo = availableTreatments.find(t => t.name === treatment);
+            const label = treatmentInfo ? treatmentInfo.label : treatment;
+            
+            // Disable checkbox while processing
+            checkbox.disabled = true;
+            
+            try {
+                if (isChecked) {
+                    // Add treatment
+                    await addDataSourceTreatment(sourceName, sourceType, treatment);
+                } else {
+                    // Remove treatment (with confirmation). Removing detection removes recognition
+                    // with it, since recognition consumes detection's output — say so.
+                    const extra = treatment === 'FACE_DETECTION'
+                        ? ' Face recognition depends on it and will be removed as well.'
+                        : '';
+                    if (!await showConfirm(`Remove "${label}" treatment? This will delete all existing results for this treatment.${extra}`)) {
+                        checkbox.checked = true; // Revert checkbox
+                        checkbox.disabled = false;
+                        return;
+                    }
+                    await removeDataSourceTreatment(sourceName, sourceType, treatment);
+                }
+                
+                // Reload treatments to update UI with dates, etc.
+                await loadTreatments();
+            } catch (error) {
+                // Revert checkbox on error
+                checkbox.checked = !isChecked;
+                await showAlert(`Failed to ${isChecked ? 'add' : 'remove'} treatment: ${error.message}`);
+            } finally {
+                checkbox.disabled = false;
+            }
+        };
+
+        async function triggerScan() {
+            if (!await showConfirm(`Start scanning "${sourceName}"? This may take a while.`)) {
+                return;
+            }
+            
+            try {
+                await scanDataSource(sourceName, sourceType);
+                await showAlert('Scan started successfully');
+                await loadSource();
+            } catch (error) {
+                await showAlert('Failed to start scan: ' + error.message);
+            }
+        }
+
+        async function confirmClearData() {
+            if (!await showConfirm(`Are you sure you want to clear all data for "${sourceName}"? This will delete all indexed files, folders, and search results, but keep the data source configuration and treatments.`)) {
+                return;
+            }
+            
+            try {
+                const itemsDeleted = await clearDataSourceData(sourceName, sourceType);
+                await showAlert(`Successfully cleared data. ${itemsDeleted} items deleted.`);
+                await loadSource();
+            } catch (error) {
+                await showAlert('Failed to clear data: ' + error.message);
+            }
+        }
+
+        async function confirmDelete() {
+            if (!await showConfirm(`Are you sure you want to delete "${sourceName}"? This cannot be undone.`)) {
+                return;
+            }
+            
+            try {
+                await deleteDataSource(sourceName, sourceType);
+                window.location.href = 'sources.html';
+            } catch (error) {
+                await showAlert('Failed to delete data source: ' + error.message);
+            }
+        }
+
+        async function handleUploadFile(e) {
+            e.preventDefault();
+
+            const fileInput = $('uploadFileInput');
+            const file = fileInput.files[0];
+            if (!file) {
+                await showAlert('Please select a file to upload');
+                return;
+            }
+
+            const folderPath = $('uploadPathInput').value.trim();
+            const pathParts = folderPath
+                ? folderPath.split('/').filter(s => s.length > 0).concat([file.name])
+                : [file.name];
+            const encodedPath = pathParts.map(s => encodeURIComponent(s)).join('/');
+            const token = getAuthToken();
+            const query = token ? `?t=${encodeURIComponent(token)}` : '';
+            const url = getUrl(`/content/${currentSource.type}/${encodeURIComponent(currentSource.name)}/${encodedPath}${query}`);
+
+            const btn = $('uploadFileBtn');
+            btn.disabled = true;
+            btn.textContent = 'Uploading...';
+
+            const statusEl = $('uploadStatus');
+            statusEl.style.display = 'none';
+
+            try {
+                const response = await fetch(url, {
+                    method: 'PUT',
+                    body: file,
+                    headers: { 'Content-Type': file.type || 'application/octet-stream' }
+                });
+
+                if (response.ok || response.status === 201) {
+                    statusEl.className = 'alert alert-success';
+                    statusEl.textContent = `"${file.name}" uploaded successfully.`;
+                    statusEl.style.display = 'block';
+                    fileInput.value = '';
+                    $('uploadPathInput').value = '';
+                    await loadStats();
+                } else {
+                    const text = await response.text();
+                    statusEl.className = 'alert alert-error';
+                    statusEl.textContent = `Upload failed (${response.status}): ${text || 'Unknown error'}`;
+                    statusEl.style.display = 'block';
+                }
+            } catch (error) {
+                statusEl.className = 'alert alert-error';
+                statusEl.textContent = `Upload failed: ${error.message}`;
+                statusEl.style.display = 'block';
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Upload';
+            }
+        }
+
+        function showError(message) {
+            $('loadingState').style.display = 'none';
+            $('formContent').style.display = 'none';
+            $('errorState').style.display = 'block';
+            $('errorState').textContent = message;
+        }
+
+        function formatType(type) {
+            const types = {
+                'LOCAL_FILESYSTEM': 'Local File System',
+                'REMOTE_FILESYSTEM': 'Remote File System (SMB)',
+                'S3_BUCKET': 'S3 Bucket'
+            };
+            return types[type] || type;
+        }
+
+        function formatStatus(status) {
+            const statusConfig = {
+                'IDLE': { label: 'Idle', class: 'status-idle' },
+                'SCANNING': { label: 'Scanning', class: 'status-scanning' }
+            };
+            const config = statusConfig[status] || { label: status, class: 'status-unknown' };
+            return `<span class="status-badge ${config.class}">${config.label}</span>`;
+        }
+
+        async function runTestConnection() {
+            const testBtn = $('testConnectionBtn');
+            testBtn.disabled = true;
+            testBtn.textContent = 'Testing...';
+            
+            $('testLoading').style.display = 'flex';
+            $('testResult').style.display = 'none';
+            
+            try {
+                const result = await testDataSource(sourceName, sourceType);
+                renderTestResult(result);
+            } catch (error) {
+                renderTestResult({ success: false, message: error.message, files: [], folders: [] });
+            } finally {
+                testBtn.disabled = false;
+                testBtn.textContent = 'Test';
+                $('testLoading').style.display = 'none';
+            }
+        }
+
+        function formatBytes(bytes) {
+            if (bytes === null || bytes === undefined) return '';
+            if (bytes === 0) return '0 B';
+            const k = 1024;
+            const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+
+        function renderTestResult(result) {
+            $('testResult').style.display = 'block';
+            
+            const statusEl = $('testStatus');
+            if (!result.success) {
+                statusEl.className = 'alert alert-error';
+                statusEl.textContent = `Connection failed: ${result.message || 'Unknown error'}`;
+                return;
+            }
+            
+            // Build success message with inline items
+            const maxItemsToShow = 3;
+            let message = `Connection successful! Found ${result.folders.length} folder(s) and ${result.files.length} file(s) at root level.`;
+            
+            // Add folders inline
+            if (result.folders && result.folders.length > 0) {
+                const foldersToShow = result.folders.slice(0, maxItemsToShow);
+                const folderNames = foldersToShow.map(f => `📁 ${escapeHtml(f.name)}`).join(', ');
+                const hasMoreFolders = result.folders.length > maxItemsToShow;
+                message += `\n\nFolders: ${folderNames}${hasMoreFolders ? '...' : ''}`;
+            }
+            
+            // Add files inline
+            if (result.files && result.files.length > 0) {
+                const filesToShow = result.files.slice(0, maxItemsToShow);
+                const fileNames = filesToShow.map(f => `📄 ${escapeHtml(f.name)}`).join(', ');
+                const hasMoreFiles = result.files.length > maxItemsToShow;
+                message += `\n\nFiles: ${fileNames}${hasMoreFiles ? '...' : ''}`;
+            }
+            
+            statusEl.className = 'alert alert-success';
+            statusEl.style.whiteSpace = 'pre-line';
+            statusEl.textContent = message;
+        }
+
+        // Clean up subscription on page unload
+        window.addEventListener('beforeunload', () => {
+            stopStatsSubscription();
+        });
+    </script>
+</body>
+</html>
