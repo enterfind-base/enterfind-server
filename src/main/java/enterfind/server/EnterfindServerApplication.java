@@ -10,6 +10,7 @@ import org.springframework.boot.websocket.autoconfigure.servlet.WebSocketMessagi
 import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.scheduling.annotation.EnableScheduling;
 
+import enterfind.server.config.EgressProxy;
 import enterfind.server.model.DataSourceType;
 import enterfind.server.scan.treatment.FaceDetectionTreatmentHandler;
 import enterfind.server.scan.treatment.ObjectDetectionTreatmentHandler;
@@ -35,7 +36,11 @@ public class EnterfindServerApplication {
 	private static final long SHUTDOWN_MODEL_CLOSE_TIMEOUT_MS = 3_000;
 
 	public static void main(String[] args) {
+		// Before any client exists: maps HTTPS_PROXY / HTTP_PROXY / NO_PROXY onto the JVM's proxy properties.
+		EgressProxy.apply();
 		ConfigurableApplicationContext context = SpringApplication.run(EnterfindServerApplication.class, args);
+		logger.info(EgressProxy.current().summary());
+		EgressProxy.current().warnings().forEach(logger::warn);
 		String[] activeProfiles = context.getEnvironment().getActiveProfiles();
 		String[] defaultProfiles = context.getEnvironment().getDefaultProfiles();
 		

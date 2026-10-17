@@ -15,6 +15,7 @@ import org.springframework.stereotype.Service;
 import tools.jackson.databind.ObjectMapper;
 import tools.jackson.databind.json.JsonMapper;
 
+import enterfind.server.config.EgressProxy;
 import enterfind.server.dao.SystemSettingsDao;
 import enterfind.server.exception.InvalidArgumentException;
 import enterfind.server.model.RemoteAccessConfig;
@@ -148,6 +149,7 @@ public class RemoteAccessService {
                 // 127.0.0.1 rather than localhost: it reaches a server bound to all addresses or to
                 // loopback only, whichever way the name localhost happens to resolve.
                 "http://127.0.0.1:" + serverPort, "ws://127.0.0.1:" + serverPort);
+            EgressProxy.configure(client, uri);
             tunnelClient = client;
             Thread.ofVirtual().name("tunnel-connect").start(() -> {
                 try {
