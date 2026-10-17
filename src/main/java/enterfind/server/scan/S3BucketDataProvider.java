@@ -1,6 +1,7 @@
 package enterfind.server.scan;
 
 import java.io.InputStream;
+import java.net.InetSocketAddress;
 import java.net.URI;
 import java.nio.file.Paths;
 import java.time.Instant;
@@ -12,6 +13,7 @@ import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import enterfind.server.config.EgressProxy;
 import enterfind.server.exception.InvalidArgumentException;
 import enterfind.server.exception.SystemIssueException;
 import enterfind.server.model.S3BucketDataSource;
@@ -19,6 +21,8 @@ import enterfind.server.util.MimeTypeDetector;
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
 import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
 import software.amazon.awssdk.core.sync.RequestBody;
+import software.amazon.awssdk.http.apache5.Apache5HttpClient;
+import software.amazon.awssdk.http.apache5.ProxyConfiguration;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.S3ClientBuilder;
@@ -310,6 +314,8 @@ public class S3BucketDataProvider implements DataProviderInterface {
 
         S3ClientBuilder builder = S3Client.builder()
                 .region(Region.of(regionStr))
+                .httpClientBuilder(Apache5HttpClient.builder()
+                        .proxyConfiguration(proxyConfiguration(endpointUrl, regionStr)))
                 .credentialsProvider(StaticCredentialsProvider.create(
                         AwsBasicCredentials.create(ds.accessKey(), ds.secretKey())));
 
@@ -319,6 +325,23 @@ public class S3BucketDataProvider implements DataProviderInterface {
         }
 
         return builder.build();
+    }
+
+    /**
+     * The SDK's own proxy lookup reads only the {@code http.*} properties and {@code HTTP_PROXY}, so
+     * an HTTPS endpoint behind {@code HTTPS_PROXY} would go direct. The proxy is therefore taken from
+     * the JVM's selector, as for every other client, and the SDK's own lookup is switched off.
+     */
+    private static ProxyConfiguration proxyConfiguration(String endpointUrl, String region) {
+        URI target = URI.create(endpointUrl != null ? endpointUrl : "https://s3." + region + ".amazonaws.com");
+        ProxyConfiguration.Builder proxy = ProxyConfiguration.builder()
+                .useSystemPropertyValues(false)
+                .useEnvironmentVariableValues(false);
+        if (EgressProxy.proxyFor(target).address() instanceof InetSocketAddress address) {
+            String host = address.getHostString().contains(":") ? "[" + address.getHostString() + "]" : address.getHostString();
+            proxy.endpoint(URI.create("http://" + host + ":" + address.getPort()));
+        }
+        return proxy.build();
     }
 
     /**

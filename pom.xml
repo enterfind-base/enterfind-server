@@ -120,6 +120,13 @@
 			<artifactId>s3</artifactId>
 			<version>2.55.1</version>
 		</dependency>
+		<!-- The S3 client's HTTP client, declared at compile scope because S3BucketDataProvider configures
+		     its proxy explicitly: the SDK's own lookup ignores https.proxyHost (see EgressProxy). -->
+		<dependency>
+			<groupId>software.amazon.awssdk</groupId>
+			<artifactId>apache5-client</artifactId>
+			<version>2.55.1</version>
+		</dependency>
 
 		<!-- Cron-utils for cron expression parsing and execution time calculation -->
 		<dependency>
