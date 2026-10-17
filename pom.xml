@@ -21,7 +21,7 @@
 		<!-- Must match the core SDK versions imported by spring-ai-bom ${spring-ai.version};
 		     the OkHttp client modules are not managed by the BOM. -->
 		<anthropic-sdk.version>2.62.0</anthropic-sdk.version>
-		<openai-sdk.version>4.63.1</openai-sdk.version>
+		<openai-sdk.version>4.80.0</openai-sdk.version>
 	</properties>
 
 	<dependencyManagement>
