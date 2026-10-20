@@ -115,7 +115,7 @@
     </main>
 
     <script type="module">
-        import { $, showAlert } from './js/util.js';
+        import { $, escapeHtml, showAlert } from './js/util.js';
         import { checkAuthAndRedirect } from './js/auth.js';
         import { initFooter } from './js/footer.js';
         import { getRemoteContext, getUrl } from './js/remote.js';
@@ -194,8 +194,8 @@
                 <th class="num">${headers[3]}</th>
             </tr></thead>`;
             const tbody = rows.map(e => `<tr>
-                <td>${escHtml(e.serverId)}</td>
-                <td>${escHtml(fmtPeriod ? fmtPeriod(e.period) : e.period)}</td>
+                <td>${escapeHtml(e.serverId)}</td>
+                <td>${escapeHtml(fmtPeriod ? fmtPeriod(e.period) : e.period)}</td>
                 <td class="num">${formatBytes(e.ingressBytes)}</td>
                 <td class="num">${formatBytes(e.egressBytes)}</td>
             </tr>`).join('');
@@ -213,13 +213,10 @@
                 : 'N/A';
             container.innerHTML = `<table class="usage-table"><tbody><tr>
                 <td style="font-weight:500;">Monthly quota used:</td>
-                <td>${escHtml(pct)}</td>
+                <td>${escapeHtml(pct)}</td>
             </tr></tbody></table>`;
         }
 
-        function escHtml(str) {
-            return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-        }
     </script>
 </body>
 </html>

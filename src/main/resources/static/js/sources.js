@@ -97,7 +97,8 @@ function stopSubscriptions() {
  */
 function updateSourceStatus(name, type, newStatus, newDateLastScanned) {
     const key = `${name}:${type}`;
-    const sourceCard = document.querySelector(`[data-source-key="${key}"]`);
+    // Compare via dataset rather than an attribute selector, which a quote in the name would break
+    const sourceCard = [...document.querySelectorAll('.source-card')].find(card => card.dataset.sourceKey === key);
     if (!sourceCard) return;
     
     // Update the status badge
@@ -144,7 +145,7 @@ function renderSources() {
     $('emptyState').style.display = 'none';
     
     $('sourcesGrid').innerHTML = dataSources.map(source => `
-        <div class="source-card" data-source-key="${source.name}:${source.type}">
+        <div class="source-card" data-source-key="${escapeHtml(`${source.name}:${source.type}`)}" data-name="${escapeHtml(source.name)}" data-type="${escapeHtml(source.type)}">
             <div class="source-header">
                 <div style="display: flex; align-items: center; gap: 0.5rem; flex: 1;">
                     <span class="source-name">${escapeHtml(source.name)}</span>
@@ -156,9 +157,9 @@ function renderSources() {
                 ${getSourceDetailsRow(source)}
             </div>
             <div class="source-actions">
-                <a href="source.html?name=${encodeURIComponent(source.name)}&type=${source.type}" class="btn btn-secondary btn-sm">Edit</a>
-                <button class="btn btn-secondary btn-sm" onclick="triggerScan('${escapeHtml(source.name)}', '${source.type}')" ${source.status === 'SCANNING' ? 'disabled' : ''}>Scan Now</button>
-                <button class="btn btn-danger btn-sm" onclick="promptDelete('${escapeHtml(source.name)}', '${source.type}')">Delete</button>
+                <a href="source.html?name=${encodeURIComponent(source.name)}&type=${encodeURIComponent(source.type)}" class="btn btn-secondary btn-sm">Edit</a>
+                <button class="btn btn-secondary btn-sm" onclick="triggerScan(this.closest('.source-card').dataset.name, this.closest('.source-card').dataset.type)" ${source.status === 'SCANNING' ? 'disabled' : ''}>Scan Now</button>
+                <button class="btn btn-danger btn-sm" onclick="promptDelete(this.closest('.source-card').dataset.name, this.closest('.source-card').dataset.type)">Delete</button>
             </div>
         </div>
     `).join('');
@@ -284,7 +285,7 @@ function formatStatus(status) {
         'SCANNING': { label: 'Scanning', class: 'status-scanning' }
     };
     const config = statusConfig[status] || { label: status, class: 'status-unknown' };
-    return `<span class="status-badge ${config.class}">${config.label}</span>`;
+    return `<span class="status-badge ${config.class}">${escapeHtml(config.label)}</span>`;
 }
 
 // Expose functions to global scope for inline onclick handlers

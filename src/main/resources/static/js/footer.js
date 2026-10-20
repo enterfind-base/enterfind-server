@@ -6,6 +6,7 @@
 import { getAbout } from './api.js';
 import { clearAuth, getAuthUser, isLoggedIn, logout } from './auth.js';
 import { getLoginUrl } from './remote.js';
+import { escapeHtml } from './util.js';
 
 const REPO_URL = 'https://github.com/enterfind-base/enterfind-server';
 
@@ -142,14 +143,6 @@ function initNavbarBanner(bannerText) {
     }
 }
 
-/**
- * Escape HTML to prevent XSS
- */
-function escapeHtml(str) {
-    const div = document.createElement('div');
-    div.textContent = str;
-    return div.innerHTML;
-}
 
 /**
  * Refresh the footer (call after auth state changes)

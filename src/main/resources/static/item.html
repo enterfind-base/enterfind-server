@@ -247,31 +247,32 @@
          * Apply highlighting to a value based on search context
          */
         function highlightValue(value, key) {
-            let highlighted = escapeHtml(value);
+            // 1. searchString terms (including quoted phrases)
+            const terms = searchString ? extractSearchTerms(searchString) : [];
 
-            // 1. Highlight searchString terms (including quoted phrases)
-            if (searchString) {
-                const terms = extractSearchTerms(searchString);
-                // Sort by length descending to highlight longer phrases first
-                terms.sort((a, b) => b.length - a.length);
-                terms.forEach(term => {
-                    const regex = new RegExp(`(${escapeRegex(term)})`, 'gi');
-                    highlighted = highlighted.replace(regex, '<mark>$1</mark>');
-                });
-            }
-
-            // 2. Highlight LIKE/EQUAL condition matches for this key
+            // 2. LIKE/EQUAL condition values for this key
             searchConditions.forEach(cond => {
-                if (cond.name.toLowerCase() === key.toLowerCase()) {
-                    if (cond.operation === 'LIKE' || cond.operation === 'EQUAL') {
-                        const searchValue = cond.value.replace(/%/g, '');
-                        const regex = new RegExp(`(${escapeRegex(searchValue)})`, 'gi');
-                        highlighted = highlighted.replace(regex, '<mark>$1</mark>');
-                    }
+                if (cond.name.toLowerCase() === key.toLowerCase()
+                        && (cond.operation === 'LIKE' || cond.operation === 'EQUAL')) {
+                    terms.push(cond.value.replace(/%/g, ''));
                 }
             });
 
-            return highlighted;
+            const patterns = terms.filter(t => t.length > 0)
+                // Longest first, so a phrase wins over the words inside it
+                .sort((a, b) => b.length - a.length)
+                .map(escapeRegex);
+            if (patterns.length === 0) {
+                return escapeHtml(value);
+            }
+
+            // Match on the raw text and escape each piece afterwards. Matching on escaped HTML lets a
+            // term hit inside an entity ("39" in &#39;) and stops a term with a quote matching at all.
+            // split() with a capture group puts the matches at the odd indexes.
+            const regex = new RegExp(`(${patterns.join('|')})`, 'gi');
+            return String(value).split(regex)
+                .map((part, i) => i % 2 ? `<mark>${escapeHtml(part)}</mark>` : escapeHtml(part))
+                .join('');
         }
 
         /**
@@ -317,7 +318,7 @@
                             const previewHtml = `
                                 <div class="detail-label">Preview</div>
                                 <div class="detail-value">
-                                    <img src="${previewUrl}" data-fullurl="${lightboxUrl}" alt="${escapeHtml(currentItem.name)}" class="item-preview-image">
+                                    <img src="${escapeHtml(previewUrl)}" data-fullurl="${escapeHtml(lightboxUrl)}" alt="${escapeHtml(currentItem.name)}" class="item-preview-image">
                                 </div>
                             `;
                             // Append to existing details
@@ -399,7 +400,7 @@
                         const altText = escapeHtml(label || `Face ${faceIndex + 1}`);
                         return `
                             <div class="face-thumbnail-container">
-                                <img src="${faceCropUrl}"
+                                <img src="${escapeHtml(faceCropUrl)}"
                                      alt="${altText}"
                                      class="face-thumbnail"
                                      onerror="this.parentElement.classList.add('face-thumbnail-error'); this.style.display='none';">
@@ -417,7 +418,7 @@
                     ? values.map(v => shouldHighlight ? highlightValue(v, key) : escapeHtml(v)).join('\n\n')
                     : values.map(v => shouldHighlight ? highlightValue(v, key) : escapeHtml(v)).join(', ');
                 return `
-                <div class="detail-label">${formatKey(key)}</div>
+                <div class="detail-label">${escapeHtml(formatKey(key))}</div>
                 <div class="${valueClass}">${valueContent}</div>
             `;
             }).join('');
@@ -487,7 +488,7 @@
             currentItem = item; // Store for use in renderAttributes
             $('loadingState').style.display = 'none';
             $('itemContent').style.display = 'block';
-            const titleHtml = escapeHtml(item.name) + (dataSourceName && dataSourceType ? ` <a class="btn btn-secondary btn-sm" href="${buildDownloadUrl(dataSourceType, dataSourceName, item.folder || '', item.name)}" onclick="event.stopPropagation()" style="margin-left: 1rem;">Download</a>` : '');
+            const titleHtml = escapeHtml(item.name) + (dataSourceName && dataSourceType ? ` <a class="btn btn-secondary btn-sm" href="${escapeHtml(buildDownloadUrl(dataSourceType, dataSourceName, item.folder || '', item.name))}" onclick="event.stopPropagation()" style="margin-left: 1rem;">Download</a>` : '');
             $('itemTitle').innerHTML = titleHtml;
             document.title = `${item.name} - EnterFind`;
 

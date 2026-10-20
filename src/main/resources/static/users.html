@@ -490,7 +490,6 @@
             isLoggedIn,
             isAdmin,
             getAuthUser,
-            setupNavbar,
             clearAuth,
             logout,
             getHumanUsers,
@@ -528,8 +527,6 @@
                 }
             }
 
-            // Setup navbar
-            setupNavbar($('navAuth'));
             initFooter();
             // Fetch server timezone for proper date formatting
             fetchServerTimezone();
@@ -591,17 +588,17 @@
                     <td>${user.dateLastLogin ? formatDate(user.dateLastLogin) : 'Never'}</td>
                     <td>${user.recoveryCodesRemaining} remaining</td>
                     <td class="actions-cell">
-                        <button class="btn-icon" title="Toggle status" data-toggle-status="${user.id}" data-active="${user.isActive}" ${isOnlyUser ? 'disabled' : ''}>
+                        <button class="btn-icon" title="Toggle status" data-toggle-status="${escapeHtml(user.id)}" data-active="${user.isActive}" ${isOnlyUser ? 'disabled' : ''}>
                             ${user.isActive ? '&#128274;' : '&#128275;'}
                         </button>
-                        <button class="btn-icon" title="Regenerate setup link" data-regen-setup="${user.id}" data-nickname="${user.nickname}">
+                        <button class="btn-icon" title="Regenerate setup link" data-regen-setup="${escapeHtml(user.id)}" data-nickname="${escapeHtml(user.nickname)}">
                             &#128279;
                         </button>
-                        <button class="btn-icon" title="Regenerate recovery codes" data-regen-codes="${user.id}">
+                        <button class="btn-icon" title="Regenerate recovery codes" data-regen-codes="${escapeHtml(user.id)}">
                             &#128273;
                         </button>
                         ${(user.id !== currentUser?.id || isOnlyUser) ? `
-                            <button class="btn-icon btn-danger" title="Delete user" data-delete-user="${user.id}" data-nickname="${user.nickname}">
+                            <button class="btn-icon btn-danger" title="Delete user" data-delete-user="${escapeHtml(user.id)}" data-nickname="${escapeHtml(user.nickname)}">
                                 &#128465;
                             </button>
                         ` : ''}
@@ -674,7 +671,7 @@
                         <td>
                             <div class="actions-cell">
                                 <button class="btn-icon" title="Delete" 
-                                    data-delete-api-key="${apiKey.id}" 
+                                    data-delete-api-key="${escapeHtml(apiKey.id)}" 
                                     data-api-key-nickname="${escapeHtml(apiKey.nickname)}">
                                     🗑️
                                 </button>

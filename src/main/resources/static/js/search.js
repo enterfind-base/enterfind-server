@@ -467,7 +467,7 @@ function renderConditions() {
         }
         return `
             <div class="condition-pill">
-                <span>${condition.name} ${operationLabels[condition.operation] || condition.operation} "${displayValue}"</span>
+                <span>${escapeHtml(condition.name)} ${escapeHtml(operationLabels[condition.operation] || condition.operation)} "${escapeHtml(displayValue)}"</span>
                 <button class="flip-btn" onclick="flipCondition(${index})" title="Flip to opposite operation">⇄</button>
                 <button class="remove-btn" onclick="removeCondition(${index})" title="Remove condition">×</button>
             </div>
@@ -523,7 +523,7 @@ function renderResults(items) {
                     const safeDataSourceName = encodeForInlineOnclick(item.dataSourceName);
                     const previewUrl = item.dataSourceName ? buildPreviewUrl(item.dataSourceType, item.dataSourceName, item.folder || '', item.name) : '';
                     return `
-                        <div class="result-card" onclick="openItem('${safeName}', '${safeFolder}', '${safeDataSourceName}', '${item.dataSourceType}')">
+                        <div class="result-card" onclick="openItem('${safeName}', '${safeFolder}', '${safeDataSourceName}', '${encodeForInlineOnclick(item.dataSourceType)}')">
                             ${previewUrl ? `<img src="${previewUrl}" alt="${escapeHtml(item.name)}" class="result-card-thumb" onerror="this.style.display='none'">` : '<div class="result-card-thumb-placeholder"></div>'}
                             <div class="result-card-content">
                                 <div class="result-card-title">${item.dataSourceName ? `<a class="result-card-download" href="${buildDownloadUrl(item.dataSourceType, item.dataSourceName, item.folder || '', item.name)}" onclick="event.stopPropagation()" title="Download">↓</a>` : ''}${escapeHtml(item.name)}</div>
@@ -537,7 +537,7 @@ function renderResults(items) {
     } else {
         // Normal mode: list view
         $('resultsList').innerHTML = items.map(item => `
-            <div class="result-item" onclick="openItem('${encodeForInlineOnclick(item.name)}', '${encodeForInlineOnclick(item.folder || '')}', '${encodeForInlineOnclick(item.dataSourceName)}', '${item.dataSourceType}')">
+            <div class="result-item" onclick="openItem('${encodeForInlineOnclick(item.name)}', '${encodeForInlineOnclick(item.folder || '')}', '${encodeForInlineOnclick(item.dataSourceName)}', '${encodeForInlineOnclick(item.dataSourceType)}')">
                 <div class="result-title">${escapeHtml(item.name)} ${item.dataSourceName ? `<a class="download-arrow" href="${buildDownloadUrl(item.dataSourceType, item.dataSourceName, item.folder || '', item.name)}" onclick="event.stopPropagation()" title="Download">↓</a>` : ''}</div>
                 <div class="result-folder">${renderClickablePath(item.folder)}</div>
                 <div class="result-meta">
@@ -713,7 +713,7 @@ function renderFacetValues() {
         </div>
         <ul class="facet-list">
             ${filteredValues.map(fv => `
-                <li class="facet-item" data-value="${escapeHtml(fv.value || '').toLowerCase()}" onclick="addFacetCondition('${state.selectedFacet}', '${escapeHtml(fv.value)}')">
+                <li class="facet-item" data-value="${escapeHtml((fv.value || '').toLowerCase())}" data-facet-key="${escapeHtml(state.selectedFacet)}" data-facet-value="${escapeHtml(fv.value)}" onclick="addFacetCondition(this.dataset.facetKey, this.dataset.facetValue)">
                     <span class="facet-value">${escapeHtml(fv.value) || '(empty)'}</span>
                     <span class="facet-count">${fv.count}</span>
                 </li>
@@ -901,7 +901,7 @@ function renderClickablePath(folder) {
         }
         
         // Each segment is clickable and adds just that segment as a path condition
-        html += `<span class="path-segment" onclick="event.stopPropagation(); addFacetCondition('${FIELD_PATH}', '${escapeHtml(segments[i])}')">${escapeHtml(segments[i])}</span>`;
+        html += `<span class="path-segment" data-segment="${escapeHtml(segments[i])}" onclick="event.stopPropagation(); addFacetCondition('${FIELD_PATH}', this.dataset.segment)">${escapeHtml(segments[i])}</span>`;
     }
     
     return html;
@@ -1048,7 +1048,6 @@ async function showSavedQueries() {
     }
     
     $('savedQueriesModal').style.display = 'flex';
-    $('savedQueriesLoading').style.display = 'block';
     $('savedQueriesList').innerHTML = '<div class="loading" id="savedQueriesLoading"><div class="spinner"></div></div>';
     
     try {
@@ -1085,8 +1084,8 @@ function renderSavedQueries(queries) {
                 <div class="saved-query-header">
                     <h4 class="saved-query-name">${escapeHtml(query.name)}</h4>
                     <div class="saved-query-actions">
-                        <button class="btn btn-sm btn-primary" onclick="applySavedQuery('${query.id}')">Apply</button>
-                        <button class="btn btn-sm btn-danger" onclick="deleteSavedQueryConfirm('${query.id}', '${escapeHtml(query.name)}')">Delete</button>
+                        <button class="btn btn-sm btn-primary" data-query-id="${escapeHtml(query.id)}" onclick="applySavedQuery(this.dataset.queryId)">Apply</button>
+                        <button class="btn btn-sm btn-danger" data-query-id="${escapeHtml(query.id)}" data-query-name="${escapeHtml(query.name)}" onclick="deleteSavedQueryConfirm(this.dataset.queryId, this.dataset.queryName)">Delete</button>
                     </div>
                 </div>
                 <div class="saved-query-details">

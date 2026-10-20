@@ -49,7 +49,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         } else {
             $('settingsLoading').style.display = 'none';
             $('settingsError').style.display = 'block';
-            $('settingsError').innerHTML = '<p class="alert alert-error">Failed to load settings: ' + (error.message || 'Unknown error') + '</p>';
+            $('settingsError').innerHTML = `<p class="alert alert-error">Failed to load settings: ${escapeHtml(error.message || 'Unknown error')}</p>`;
         }
     }
 
@@ -272,7 +272,7 @@ function renderAbout(about) {
     ];
     $('aboutContent').innerHTML = fields.map(f => `
         <div class="detail-label">${f.label}</div>
-        <div class="detail-value">${f.value || 'N/A'}</div>
+        <div class="detail-value">${escapeHtml(f.value || 'N/A')}</div>
     `).join('');
 }
 
@@ -476,12 +476,12 @@ function renderSettingRow(tbody, setting, isPassword = false, saveSetting = setU
     const placeholder = isPassword ? '**** enter to replace' : '';
 
     tr.innerHTML = `
-        <td style="padding-right: 2rem; vertical-align: middle; width: 30%;">${setting.settingName}</td>
+        <td style="padding-right: 2rem; vertical-align: middle; width: 30%;">${escapeHtml(setting.settingName)}</td>
         <td style="padding-right: 2rem; vertical-align: middle;">
-            <input type="${inputType}" value="${displayValue}" placeholder="${placeholder}" data-setting="${setting.settingName}" style="width: 100%; padding: 0.4rem 0.6rem; margin-right: 0.5rem;" />
+            <input type="${inputType}" value="${escapeHtml(displayValue)}" placeholder="${placeholder}" data-setting="${escapeHtml(setting.settingName)}" style="width: 100%; padding: 0.4rem 0.6rem; margin-right: 0.5rem;" />
         </td>
         <td style="vertical-align: middle; width: 15%;">
-            <button class="btn btn-primary btn-save" data-setting="${setting.settingName}" style="padding: 0.4rem 1.2rem;">Save</button>
+            <button class="btn btn-primary btn-save" data-setting="${escapeHtml(setting.settingName)}" style="padding: 0.4rem 1.2rem;">Save</button>
         </td>
     `;
     tbody.appendChild(tr);
@@ -489,8 +489,8 @@ function renderSettingRow(tbody, setting, isPassword = false, saveSetting = setU
     // Add event listener for save button
     const btn = tr.querySelector('.btn-save');
     btn.addEventListener('click', async (e) => {
-        const settingName = btn.getAttribute('data-setting');
-        const input = tr.querySelector(`input[data-setting="${settingName}"]`);
+        const settingName = btn.dataset.setting;
+        const input = tr.querySelector('input');
         const newValue = input.value;
         // A blank sensitive field means "leave the stored key as-is" — never overwrite it with "".
         if (isPassword && newValue === '') {
