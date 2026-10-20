@@ -895,7 +895,7 @@
 
             try {
                 await createSource(type, name, cronPattern, skipFiles);
-                window.location.href = `source.html?name=${encodeURIComponent(name)}&type=${type}`;
+                window.location.href = `source.html?name=${encodeURIComponent(name)}&type=${encodeURIComponent(type)}`;
             } catch (error) {
                 await showAlert('Failed to save: ' + error.message);
             } finally {
@@ -1288,7 +1288,7 @@
                 'SCANNING': { label: 'Scanning', class: 'status-scanning' }
             };
             const config = statusConfig[status] || { label: status, class: 'status-unknown' };
-            return `<span class="status-badge ${config.class}">${config.label}</span>`;
+            return `<span class="status-badge ${config.class}">${escapeHtml(config.label)}</span>`;
         }
 
         async function runTestConnection() {

@@ -411,6 +411,103 @@ mvn test                          # All tests
 mvn test -Dtest=ScannerIntegrationTest  # Specific test
 ```
 
+### UI testing with a headless browser
+
+There is no UI test suite in the repository and no JS test runner; the static pages under
+`src/main/resources/static/` are only exercised by driving a running server from a browser. When no
+browser tool is connected, use Playwright with a headless Chromium, installed outside the repo.
+
+**Setup (aarch64 devcontainer).** The devcontainer image has neither the browser nor the system
+libraries Chromium needs (`libnss3`, `libgbm1`, `libasound2t64`, …). Playwright's own browser
+download stalls in this container, even when pointed at the CDN with `PLAYWRIGHT_DOWNLOAD_HOST`, while
+`curl` fetches the same file fine. So install the libraries with Playwright, fetch the browser by hand,
+and point Playwright at it:
+
+```bash
+npm i playwright@1.49.1        # in a scratch directory, never in the repo
+npx playwright install-deps chromium   # apt; the container runs as root
+curl -L -o chromium.zip https://cdn.playwright.dev/dbazure/download/playwright/builds/chromium/1148/chromium-linux-arm64.zip
+mkdir -p ~/.cache/ms-playwright/chromium-1148
+python3 -m zipfile -e chromium.zip ~/.cache/ms-playwright/chromium-1148   # unzip is not installed
+chmod +x ~/.cache/ms-playwright/chromium-1148/chrome-linux/chrome*
+```
+
+Then launch it explicitly — by default 1.49 looks for a separate headless-shell build that is not
+installed. Both the libraries and the browser are lost when the container is rebuilt, so repeat these
+steps after a rebuild.
+
+```js
+const browser = await chromium.launch({
+    executablePath: process.env.HOME + '/.cache/ms-playwright/chromium-1148/chrome-linux/chrome',
+    args: ['--no-sandbox'],
+});
+```
+
+**Data.** Start from a clean server and index `testshare` through the UI:
+
+1. Stop the server and empty every table with the same `DELETE` list, in the same order, as
+   `BaseDatabaseTest.wipeDatabase()` — that method is the authority for the table order. Settings are
+   deleted too; the server recreates the defaults on boot, and with no users, login is off.
+2. Build a copy of `testshare` with the extra folders `SearchDaoTest.setThisUp` adds: nested paths and
+   a folder with commas in its name, which the path and comma flows need. Put the copy outside the repo.
+   Don't add the folders to `testshare` itself, because 11 test classes scan it and count what they find.
+   ```bash
+   S=/tmp/enterfind-ui-share; rm -rf "$S"
+   cp -r /workspaces/enterfind-server/src/test/resources/testshare "$S"
+   mkdir -p "$S/level1/level2/level3" "$S/level1/Rust Servers, Services, and Apps"
+   printf 'Content at level 1' > "$S/level1/file_at_level1.txt"
+   printf 'Content at level 2' > "$S/level1/level2/file_at_level2.txt"
+   printf 'Content at level 3' > "$S/level1/level2/level3/file_at_level3.txt"
+   printf 'Content in comma folder' > "$S/level1/Rust Servers, Services, and Apps/comma-file.txt"
+   ```
+3. Start the server and create a LOCAL_FILESYSTEM source on `source.html?new=true` pointing at the
+   copy. Enable CONTENT, then Scan Now. This gives 12 items.
+
+Working on a copy also keeps the repo's fixtures intact when a pass deletes or uploads files (the item
+page's Delete File, the source page's upload form). Don't build on data left over from
+`SearchDaoTest`: it deletes its temp folder in `@AfterAll`, so its rows survive with no files behind
+them and every download and preview 404s.
+
+**Running a comparison.** Run every pass against `master` first (`git stash`, restart
+`mvn spring-boot:run`, run, `git stash pop`, restart). Static files are served from `target/classes`,
+so a restart is needed after every change. On security fixes the baseline proves the test can see the
+bug; on everything else, diff what each check *observed* rather than only pass/fail. Items scanned
+together share a `time_modified` and tie-break on random IDs, so compare those result lists as sets.
+
+**XSS payloads.** Make each payload call `console.log('XSS-FIRED-<tag>')` rather than `alert()`, which
+blocks automation, and fail on any console line matching `^xss-fired-[\w-]+$` (case-insensitive —
+facet keys and values come back lowercased). Also scan the DOM for injected
+`onerror`/`onfocus`/`onmouseover`/`autofocus` attributes, since some payloads only fire on hover or load
+failure. A payload ending in `//` cannot be a file or folder name; close the call with `('` instead.
+
+**What the alpha profile and the app change about a test:**
+- **Previews never generate** — `PreviewGeneratorScheduler` is `@Profile("!alpha")`. To test preview,
+  thumbnail and lightbox paths, set the item's `item_previews` row to `status = 'DONE'` with
+  `preview_data` and `content_type` filled in.
+- **Treatments run only after a scan** (see Treatment Processing); poll the source page until the
+  status badge is Idle and the New/Updated/In Progress stats are 0.
+- **Metadata keys are sanitized server-side** (`k');x` is stored as `k_x`), so a hostile key cannot come
+  from a file. Insert one into `item_treatment_results` directly to test key rendering.
+- **Auth is off until a user exists.** The first user created on `users.html` needs no login and is
+  forced to ADMIN; the setup page (`user-onetime-setup.html`) shows the TOTP secret and recovery
+  codes. Login codes are TOTP SHA1, 6 digits, 30 s — compute them from that secret with Node's
+  `crypto` HMAC. Saved queries require login. The logged-in nickname and Logout are in the footer
+  (`#authFooter`, `#footerLogoutBtn`).
+- **Reset between runs** with the clean-server step above. Leftover users make every later page
+  redirect to login, and leftover sources change result counts.
+
+**Selectors that are not obvious:**
+- The search page is `index.html`; there is no `search.html`.
+- Tom Select does not add its options to the underlying `<select>`; open `.ts-control` and read
+  `.ts-dropdown .option[data-value]`.
+- `showAlert`/`showConfirm`/`showPrompt` render `.custom-modal-buttons`; OK is `.btn-primary`.
+- The settings table uses display names (`TreatmentMaxFailureCount`), not the stored
+  `TREATMENT_MAX_FAILURE_COUNT`.
+- Every attribute whose key contains "content" gets `.preserve-whitespace`; target the extracted text
+  by the `.detail-label` whose text is exactly `Content`.
+- After Scan Now the sources list re-renders; wait for the card's badge to read Idle before the next
+  click, or the click lands on a node that is being replaced.
+
 ## Code Conventions
 
 ### Exceptions

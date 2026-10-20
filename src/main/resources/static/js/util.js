@@ -19,12 +19,14 @@ export const BROWSER_IMAGE_TYPES = new Set([
     'image/x-icon', 'image/vnd.microsoft.icon'
 ]);
 
-// Escape HTML to prevent XSS
+// Escape HTML to prevent XSS. Quotes are escaped too, so the result is safe inside quoted
+// attributes as well as text. It is NOT safe inside inline JS (onclick="..."): the browser decodes
+// entities before running the handler, so pass values via data-* attributes instead.
+const HTML_ESCAPES = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
+
 export function escapeHtml(text) {
-    if (!text) return '';
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
+    if (text === null || text === undefined || text === '') return '';
+    return String(text).replace(/[&<>"']/g, ch => HTML_ESCAPES[ch]);
 }
 
 // Format date string for display in client's local timezone
@@ -99,7 +101,7 @@ export function buildPreviewUrl(dsType, dsName, folder, name) {
     const encodedPath = segments.map(s => encodeURIComponent(s)).join('/');
     const token = getAuthToken();
     const query = token ? `?t=${encodeURIComponent(token)}` : '';
-    return getUrl(`/preview/${dsType}/${encodeURIComponent(dsName || '')}/${encodedPath}${query}`);
+    return getUrl(`/preview/${encodeURIComponent(dsType || '')}/${encodeURIComponent(dsName || '')}/${encodedPath}${query}`);
 }
 
 /**
@@ -115,7 +117,7 @@ export function buildDownloadUrl(dsType, dsName, folder, name) {
     const encodedPath = segments.map(s => encodeURIComponent(s)).join('/');
     const token = getAuthToken();
     const query = token ? `?t=${encodeURIComponent(token)}` : '';
-    return getUrl(`/content/${dsType}/${encodeURIComponent(dsName || '')}/${encodedPath}${query}`);
+    return getUrl(`/content/${encodeURIComponent(dsType || '')}/${encodeURIComponent(dsName || '')}/${encodedPath}${query}`);
 }
 
 /**
@@ -135,7 +137,7 @@ export function buildFaceCropUrl(dsType, dsName, folder, name, faceIndex) {
     const normalizedType = (dsType || '').toLowerCase().replace(/_/g, '-');
     const token = getAuthToken();
     const query = token ? `?t=${encodeURIComponent(token)}` : '';
-    return getUrl(`/detected-face/${normalizedType}/${encodeURIComponent(dsName || '')}/${encodedPath}${query}`);
+    return getUrl(`/detected-face/${encodeURIComponent(normalizedType)}/${encodeURIComponent(dsName || '')}/${encodedPath}${query}`);
 }
 
 /**

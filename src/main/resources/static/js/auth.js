@@ -4,6 +4,13 @@
  *
  * Token is stored in localStorage and passed as a GraphQL variable (not in headers).
  * This enables AI introspection of auth requirements and simplifies MCP integration.
+ *
+ * localStorage is readable by any script on the origin, so the token is only as safe as the
+ * pages are from XSS: every value rendered via innerHTML must go through escapeHtml, and never
+ * into inline JS. An HttpOnly cookie would remove that dependency, but would also break the
+ * token-as-variable design above and the ?t= token on content/preview URLs. CodeQL's
+ * js/clear-text-storage-of-sensitive-data alerts on setAuth are dismissed as by-design for this
+ * reason.
  */
 
 import { getApiUrl, getLoginUrl } from './remote.js';
@@ -190,37 +197,6 @@ export async function checkAuthAndRedirect() {
  */
 export function setupAuthCheck() {
     checkAuthAndRedirect();
-}
-
-/**
- * Add logout button to navbar if logged in
- * @param {HTMLElement} navContainer - The navbar container element
- */
-export function setupNavbar(navContainer) {
-    if (!navContainer) return;
-
-    const user = getAuthUser();
-    if (user) {
-        // Add user info and logout button
-        const authSection = document.createElement('div');
-        authSection.className = 'nav-auth';
-        authSection.innerHTML = `
-            <span class="nav-user">${user.nickname}</span>
-            <button id="logoutBtn" class="btn btn-secondary btn-sm">Logout</button>
-        `;
-        navContainer.appendChild(authSection);
-
-        // Setup logout handler
-        document.getElementById('logoutBtn')?.addEventListener('click', async () => {
-            try {
-                await logout();
-            } catch (e) {
-                console.error('Logout failed:', e);
-            }
-            clearAuth();
-            window.location.href = getLoginUrl();
-        });
-    }
 }
 
 /**
