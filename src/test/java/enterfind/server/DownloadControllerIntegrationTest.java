@@ -480,4 +480,74 @@ public class DownloadControllerIntegrationTest extends BaseDatabaseTest {
         assertThat(resp.getStatusCode().value()).isEqualTo(200);
         assertThat(resp.getBody()).isEqualTo(expected);
     }
+
+    /**
+     * Scans the temp share and fetches /content for a root-level file, with ?inline=true.
+     */
+    private ResponseEntity<byte[]> scanAndFetchInline(String fileName) throws Exception {
+        testDataSourceName = "Inline Test Source";
+        createDataSourceViaGraphQL(testDataSourceName, tempTestDir.toString());
+
+        DataSourceInterface ds = dataSourceDao.findByNameAndType(testDataSourceName, DataSourceType.LOCAL_FILESYSTEM)
+            .orElseThrow(() -> new RuntimeException("Datasource not found"));
+
+        scanner.scan(ds);
+        int processed;
+        do {
+            processed = treatmentProcessor.processTreatments();
+        } while (processed > 0);
+
+        String encodedName = URLEncoder.encode(testDataSourceName, StandardCharsets.UTF_8).replace("+", "%20");
+        String encodedFileName = URLEncoder.encode(fileName, StandardCharsets.UTF_8).replace("+", "%20");
+        String url = "http://localhost:" + port + "/content/local-filesystem/" + encodedName + "/" + encodedFileName + "?inline=true";
+
+        ResponseEntity<byte[]> resp = restTemplate.getForEntity(url, byte[].class);
+        assertThat(resp.getStatusCode().value()).isEqualTo(200);
+        return resp;
+    }
+
+    @Test
+    void inlineHtmlShouldBeServedAsSandboxedAttachment() throws Exception {
+        Files.writeString(tempTestDir.resolve("page.html"),
+            "<html><body><script>console.log('XSS-FIRED-html')</script></body></html>");
+
+        HttpHeaders headers = scanAndFetchInline("page.html").getHeaders();
+
+        assertThat(headers.getFirst(HttpHeaders.CONTENT_TYPE)).startsWith("text/html");
+        assertThat(headers.getContentDisposition().isAttachment()).isTrue();
+        assertThat(headers.getFirst("Content-Security-Policy")).isEqualTo("sandbox");
+        assertThat(headers.getFirst("X-Content-Type-Options")).isEqualTo("nosniff");
+    }
+
+    @Test
+    void inlineSvgShouldBeServedAsAttachment() throws Exception {
+        Files.writeString(tempTestDir.resolve("drawing.svg"),
+            "<svg xmlns=\"http://www.w3.org/2000/svg\"><script>console.log('XSS-FIRED-svg')</script></svg>");
+
+        HttpHeaders headers = scanAndFetchInline("drawing.svg").getHeaders();
+
+        assertThat(headers.getFirst(HttpHeaders.CONTENT_TYPE)).startsWith("image/svg+xml");
+        assertThat(headers.getContentDisposition().isAttachment()).isTrue();
+    }
+
+    @Test
+    void inlineRasterImageShouldStayInline() throws Exception {
+        HttpHeaders headers = scanAndFetchInline("ocrable.jpg").getHeaders();
+
+        assertThat(headers.getFirst(HttpHeaders.CONTENT_TYPE)).startsWith("image/jpeg");
+        assertThat(headers.getContentDisposition().isInline()).isTrue();
+        assertThat(headers.getContentDisposition().getFilename()).isEqualTo("ocrable.jpg");
+        assertThat(headers.getFirst("Content-Security-Policy")).isEqualTo("sandbox");
+    }
+
+    @Test
+    void dispositionFilenameShouldBeEscaped() throws Exception {
+        String fileName = "say \"hi\"; x=1.txt";
+        Files.writeString(tempTestDir.resolve(fileName), "quoted name");
+
+        HttpHeaders headers = scanAndFetchInline(fileName).getHeaders();
+
+        assertThat(headers.getContentDisposition().isAttachment()).isTrue();
+        assertThat(headers.getContentDisposition().getFilename()).isEqualTo(fileName);
+    }
 }

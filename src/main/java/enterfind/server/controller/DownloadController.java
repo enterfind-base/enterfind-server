@@ -6,15 +6,18 @@ import java.awt.image.BufferedImage;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
+import java.util.Set;
 
 import javax.imageio.ImageIO;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.core.io.InputStreamResource;
+import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -54,6 +57,17 @@ public class DownloadController {
     private static final Logger logger = LoggerFactory.getLogger(DownloadController.class);
     private static final AntPathMatcher PATH_MATCHER = new AntPathMatcher();
     private static final int FACE_CROP_SIZE = 150; // Output size for face crops
+
+    /**
+     * Stored types /content may serve inline: raster images, which a browser renders without running
+     * script. Everything else, SVG and HTML included, is an attachment whatever ?inline= says, because
+     * under remote access every instance shares one origin, so a script in any instance's file could
+     * read the login token of every instance open in that browser. An attachment still renders in an
+     * img tag, which ignores Content-Disposition.
+     */
+    private static final Set<String> INLINE_SAFE_TYPES = Set.of(
+        "image/jpeg", "image/jpg", "image/png", "image/gif", "image/webp",
+        "image/bmp", "image/avif", "image/x-icon", "image/vnd.microsoft.icon");
 
     private final DataSourceDao dataSourceDao;
     private final ItemDao itemDao;
@@ -191,8 +205,6 @@ public class DownloadController {
         // Prepare response
         InputStreamResource resource = new InputStreamResource(is);
         HttpHeaders headers = new HttpHeaders();
-        String disposition = inline ? "inline; filename=\"" + pathInfo.fileName + "\"" : "attachment; filename=\"" + pathInfo.fileName + "\"";
-        headers.add(HttpHeaders.CONTENT_DISPOSITION, disposition);
 
         // Attempt to get stored mime type and size from DB to set proper headers
         itemDao.findItemByDatasourceAndPath(pathInfo.dataSourceId, pathInfo.slashPath, pathInfo.fileName).ifPresent(dbItem -> {
@@ -219,6 +231,15 @@ public class DownloadController {
         if (headers.getContentType() == null) {
             headers.setContentType(MediaType.APPLICATION_OCTET_STREAM);
         }
+
+        MediaType contentType = headers.getContentType();
+        boolean inlineSafe = INLINE_SAFE_TYPES.contains(contentType.getType() + "/" + contentType.getSubtype());
+        ContentDisposition.Builder disposition = inline && inlineSafe ? ContentDisposition.inline() : ContentDisposition.attachment();
+        headers.setContentDisposition(disposition.filename(pathInfo.fileName, StandardCharsets.UTF_8).build());
+        // Backstops if a file is rendered as a page anyway: no script, an opaque origin, no sniffing
+        // of e.g. HTML stored under an image type
+        headers.set("Content-Security-Policy", "sandbox");
+        headers.set("X-Content-Type-Options", "nosniff");
 
         return ResponseEntity.ok()
             .headers(headers)
