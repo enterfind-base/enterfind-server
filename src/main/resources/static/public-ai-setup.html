@@ -201,7 +201,7 @@
 
                 <h3>Your Enterfind connection URL</h3>
                 <p>With Remote Access enabled, your MCP endpoint is:</p>
-                <pre><code>https://remote-&lt;stage&gt;.enterfind.com/&lt;serverId&gt;/mcp</code></pre>
+                <pre><code>https://&lt;serverId&gt;.remote-&lt;stage&gt;.enterfind.com/mcp</code></pre>
                 <p>Your Server ID and remote URL are on the <a href="settings.html">Settings</a> page under Remote Access.</p>
 
                 <h3>Steps</h3>
@@ -224,7 +224,7 @@
 
                 <h3>Your Enterfind connection URL</h3>
                 <p>With Remote Access enabled, your instance publishes an OpenAPI description at:</p>
-                <pre><code>https://remote-&lt;stage&gt;.enterfind.com/&lt;serverId&gt;/openapi.json</code></pre>
+                <pre><code>https://&lt;serverId&gt;.remote-&lt;stage&gt;.enterfind.com/openapi.json</code></pre>
                 <p>Your Server ID and full remote URL are shown on the <a href="settings.html">Settings</a> page under Remote Access. You can open the <code>/openapi.json</code> URL in a browser to confirm it returns a JSON document before pasting it into ChatGPT.</p>
 
                 <h3>Steps</h3>
@@ -255,19 +255,19 @@
 
                 <h3>Your Enterfind connection URL</h3>
                 <p>This is the same MCP endpoint Claude uses:</p>
-                <pre><code>https://remote-&lt;stage&gt;.enterfind.com/&lt;serverId&gt;/mcp</code></pre>
+                <pre><code>https://&lt;serverId&gt;.remote-&lt;stage&gt;.enterfind.com/mcp</code></pre>
                 <p>Your Server ID and remote URL are on the <a href="settings.html">Settings</a> page under Remote Access.</p>
 
                 <h3>Steps</h3>
                 <p>The simplest way is to just ask the CLI to do it. Start the Gemini CLI and tell it, in plain language, to add an MCP server — give it a name like <code>enterfind</code> and your <code>/mcp</code> URL:</p>
-                <pre><code>Add an MCP server named enterfind at https://remote-&lt;stage&gt;.enterfind.com/&lt;serverId&gt;/mcp</code></pre>
+                <pre><code>Add an MCP server named enterfind at https://&lt;serverId&gt;.remote-&lt;stage&gt;.enterfind.com/mcp</code></pre>
                 <p>Gemini writes the entry to its <code>settings.json</code> and connects to it — no restart needed. Run <code>/mcp</code> to confirm Enterfind shows as connected and its tools are listed.</p>
 
                 <p style="margin-top: 15px;">If you prefer to configure it by hand, Gemini CLI reads its MCP servers from <code>~/.gemini/settings.json</code> (applies everywhere) or a project-local <code>.gemini/settings.json</code>. Add Enterfind under the <code>mcpServers</code> block, using the <code>httpUrl</code> field for the remote endpoint:</p>
                 <pre><code>{
   "mcpServers": {
     "enterfind": {
-      "httpUrl": "https://remote-&lt;stage&gt;.enterfind.com/&lt;serverId&gt;/mcp"
+      "httpUrl": "https://&lt;serverId&gt;.remote-&lt;stage&gt;.enterfind.com/mcp"
     }
   }
 }</code></pre>

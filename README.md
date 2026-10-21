@@ -10,7 +10,7 @@ Everything Enterfind can do is reachable through a single GraphQL API. The web U
 
 ## Try it first
 
-A read-only demo instance indexes a small public corpus — a sample of Project Gutenberg books, Library of Congress PDFs, photos, and receipts. Browse it at [`https://remote-beta.enterfind.com/b6b5b23e3ac8/`](https://remote-beta.enterfind.com/b6b5b23e3ac8/), or add `https://remote-beta.enterfind.com/b6b5b23e3ac8/mcp` as a custom connector in claude.ai (or as an MCP server in the Gemini CLI) and ask it about those documents. No account or API key is needed. Searching and retrieving work; anything that would change the instance's configuration is blocked.
+A read-only demo instance indexes a small public corpus — a sample of Project Gutenberg books, Library of Congress PDFs, photos, and receipts. Browse it at [`https://b6b5b23e3ac8.remote-beta.enterfind.com/`](https://b6b5b23e3ac8.remote-beta.enterfind.com/), or add `https://b6b5b23e3ac8.remote-beta.enterfind.com/mcp` as a custom connector in claude.ai (or as an MCP server in the Gemini CLI) and ask it about those documents. No account or API key is needed. Searching and retrieving work; anything that would change the instance's configuration is blocked.
 
 ## Quickstart
 

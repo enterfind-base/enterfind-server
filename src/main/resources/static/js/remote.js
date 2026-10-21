@@ -1,8 +1,23 @@
 /**
  * Remote access URL utilities for EnterFind
  * Resolves correct URLs when running behind the remote access tunnel.
- * On remote hostnames (remote-<stage>.enterfind.com), all paths are prefixed with /<serverId>/.
+ * Each remotely reached instance has its own origin, <serverId>.remote-<stage>.enterfind.com,
+ * with the app at the root exactly as on a local install.
  */
+
+// A legacy-shaped URL (remote-<stage>.enterfind.com/<serverId>/...) shares one origin with every
+// other instance. Move to this instance's own origin, keeping the rest of the URL byte for byte,
+// and stop: the throw fails every module that imports this one, so no page code runs here.
+const legacy = window.location.hostname.match(/^remote-(.+)\.enterfind\.com$/);
+if (legacy) {
+    const id = window.location.pathname.split('/')[1];
+    if (/^[0-9a-f]{12}$/.test(id)) {
+        const rest = window.location.pathname.slice(id.length + 1) || '/';
+        window.location.replace(`https://${id}.remote-${legacy[1]}.enterfind.com${rest}`
+            + window.location.search + window.location.hash);
+        throw new Error('Redirecting to the per-server host');
+    }
+}
 
 /**
  * Returns remote context if the page is being served via the remote access tunnel,
@@ -10,25 +25,22 @@
  * @returns {{ stage: string, serverId: string } | null}
  */
 export function getRemoteContext() {
-    const match = window.location.hostname.match(/^remote-(.+)\.enterfind\.com$/);
-    if (!match) return null;
-    const stage = match[1];
-    const serverId = window.location.pathname.split('/').filter(Boolean)[0];
-    return serverId ? { stage, serverId } : null;
+    const match = window.location.hostname.match(/^([0-9a-f]{12})\.remote-(.+)\.enterfind\.com$/);
+    return match ? { stage: match[2], serverId: match[1] } : null;
 }
 
 /**
- * Resolves an absolute path, prepending the server ID prefix when in remote mode.
+ * Resolves an absolute path. The app runs at the root of its origin both locally and remotely,
+ * so the path is returned unchanged.
  * @param {string} path - Absolute path starting with '/'
  * @returns {string}
  */
 export function getUrl(path) {
-    const ctx = getRemoteContext();
-    return ctx ? `/${ctx.serverId}${path}` : path;
+    return path;
 }
 
 /**
- * Returns the GraphQL endpoint URL, prefixed with the server ID when remote.
+ * Returns the GraphQL endpoint URL.
  * @returns {string}
  */
 export function getApiUrl() {
@@ -36,7 +48,7 @@ export function getApiUrl() {
 }
 
 /**
- * Returns the login page URL, prefixed with the server ID when remote.
+ * Returns the login page URL.
  * @returns {string}
  */
 export function getLoginUrl() {

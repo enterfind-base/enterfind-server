@@ -230,7 +230,7 @@ function renderRemoteAccessConfig(config) {
     const chatGptUrlRow = $('remoteChatGptUrlRow');
     const graphiqlUrlRow = $('remoteGraphiqlUrlRow');
     if (config.enabled && serverEnvironment && config.serverId) {
-        const base = `https://remote-${serverEnvironment}.enterfind.com/${config.serverId}`;
+        const base = `https://${config.serverId}.remote-${serverEnvironment}.enterfind.com`;
         const url = `${base}/`;
         $('remoteAccessUrl').href = url;
         $('remoteAccessUrl').textContent = url;
@@ -242,7 +242,8 @@ function renderRemoteAccessConfig(config) {
         $('remoteChatGptUrl').textContent = `${base}/openapi.json`;
         chatGptUrlRow.style.display = '';
 
-        const graphiqlUrl = `${base}/graphiql?path=/${config.serverId}/graphql&wsPath=/${config.serverId}/graphql`;
+        // GraphiQL needs an explicit path: without it Spring redirects to the local server's own address
+        const graphiqlUrl = `${base}/graphiql?path=/graphql&wsPath=/graphql`;
         $('remoteGraphiqlUrl').href = graphiqlUrl;
         $('remoteGraphiqlUrl').textContent = graphiqlUrl;
         graphiqlUrlRow.style.display = '';

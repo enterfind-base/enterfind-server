@@ -79,7 +79,7 @@ public class OpenApiControllerIntegrationTest extends BaseDatabaseTest {
     @Test
     void openApiJson_serverUrl_usesTunnelUrlWhenProxyHeaderPresent() throws Exception {
         String expectedServerId = remoteAccessService.getConfig().serverId();
-        String expectedUrl = "https://remote-alpha.enterfind.com/" + expectedServerId;
+        String expectedUrl = "https://" + expectedServerId + ".remote-alpha.enterfind.com";
 
         HttpHeaders headers = new HttpHeaders();
         headers.set("X-Enterfind-Tunnel-Proxy", "1");

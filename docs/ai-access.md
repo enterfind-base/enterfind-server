@@ -11,12 +11,12 @@ Assistants that speak **MCP** (the Model Context Protocol) — Claude and the Ge
 When the assistant runs in the cloud (claude.ai, a Claude custom connector, ChatGPT), it has to reach your instance over the public internet. Enterfind provides this through its own outbound **tunnel**: enable [Remote Access](remote-access.md) and your instance gets a stable public URL without you opening any ports. The MCP endpoint is then:
 
 ```
-https://remote-<stage>.enterfind.com/<serverId>/mcp
+https://<serverId>.remote-<stage>.enterfind.com/mcp
 ```
 
 Your Server ID and full remote URL appear on the Settings page under Remote Access. You paste this one URL into the assistant; nothing runs on your side beyond Enterfind itself. This is the path for any assistant not running on your own machine.
 
-To see this route working before you set up Remote Access, connect the assistant to the public read-only demo at `https://remote-beta.enterfind.com/b6b5b23e3ac8/mcp`. It needs no API key.
+To see this route working before you set up Remote Access, connect the assistant to the public read-only demo at `https://b6b5b23e3ac8.remote-beta.enterfind.com/mcp`. It needs no API key.
 
 The tunnel is a hosted service operated by Enterfind's creators and is subject to availability and possible throttling — see [Remote Access](remote-access.md) for what that means.
 
@@ -59,7 +59,7 @@ If the instance needs authentication, Claude asks for your API key when it first
 ChatGPT connects as a **Custom GPT Action** over **OpenAPI** rather than MCP. Your instance publishes an OpenAPI description at:
 
 ```
-https://remote-<stage>.enterfind.com/<serverId>/openapi.json
+https://<serverId>.remote-<stage>.enterfind.com/openapi.json
 ```
 
 Create a GPT, and under **Actions** import that URL as the schema; ChatGPT reads it and exposes a single operation for calling Enterfind's GraphQL endpoint. Leave the action's authentication set to **None** — Enterfind's own auth is handled inside the request, not at that layer. Because ChatGPT runs in the cloud, this route requires [Remote Access](remote-access.md); you can open the `/openapi.json` URL in a browser first to confirm it's reachable.
