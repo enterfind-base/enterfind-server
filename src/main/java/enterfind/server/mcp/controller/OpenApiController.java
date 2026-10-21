@@ -23,7 +23,7 @@ import jakarta.servlet.http.HttpServletRequest;
  * {@code X-Enterfind-Tunnel-Proxy} header is present (injected by
  * {@link enterfind.server.service.tunnel.TunnelRequestHandler}). In that case
  * the server URL is built as
- * {@code https://remote-<stage>.enterfind.com/<serverId>} using live values
+ * {@code https://<serverId>.remote-<stage>.enterfind.com} using live values
  * from {@link RemoteAccessService} and {@link ProfileHelper}.
  */
 @RestController
@@ -61,7 +61,7 @@ public class OpenApiController {
         if ("1".equals(request.getHeader("X-Enterfind-Tunnel-Proxy"))) {
             String stage = profileHelper.getActiveProfile();
             String serverId = remoteAccessService.getConfig().serverId();
-            return "https://remote-" + stage + ".enterfind.com/" + serverId;
+            return "https://" + serverId + ".remote-" + stage + ".enterfind.com";
         }
         String scheme = request.getScheme();
         String host = request.getServerName();

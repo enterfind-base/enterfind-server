@@ -11,31 +11,13 @@
  * token-as-variable design above and the ?t= token on content/preview URLs. CodeQL's
  * js/clear-text-storage-of-sensitive-data alerts on setAuth are dismissed as by-design for this
  * reason.
- *
- * Behind the remote access tunnel every instance shares one origin (remote-<stage>.enterfind.com),
- * and so one localStorage, so the keys are suffixed with the server ID there. Without it, one
- * instance's pages would show another's session and send its token to the wrong server.
  */
 
-import { getApiUrl, getLoginUrl, getRemoteContext } from './remote.js';
+import { getApiUrl, getLoginUrl } from './remote.js';
 
-const LOCAL_KEYS = ['enterfind_auth_token', 'enterfind_auth_user', 'enterfind_auth_expiry'];
-const [AUTH_TOKEN_KEY, AUTH_USER_KEY, AUTH_EXPIRY_KEY] = storageKeys();
-
-/**
- * Resolve the localStorage keys for this instance: the plain keys locally, server-scoped remotely.
- * On a remote origin the plain keys hold a session of unknown ownership left by older pages, so
- * they are dropped rather than migrated.
- * @returns {string[]} - token, user and expiry keys
- */
-function storageKeys() {
-    const ctx = getRemoteContext();
-    if (!ctx) {
-        return LOCAL_KEYS;
-    }
-    LOCAL_KEYS.forEach(key => localStorage.removeItem(key));
-    return LOCAL_KEYS.map(key => `${key}:${ctx.serverId}`);
-}
+const AUTH_TOKEN_KEY = 'enterfind_auth_token';
+const AUTH_USER_KEY = 'enterfind_auth_user';
+const AUTH_EXPIRY_KEY = 'enterfind_auth_expiry';
 
 /**
  * Get the stored auth token

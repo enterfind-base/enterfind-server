@@ -480,7 +480,7 @@
     <script type="module">
         import { getUrl } from './js/remote.js';
 
-        // Fix paths for remote access mode (paths must be prefixed with /<serverId>/)
+        // Resolve the absolute links through getUrl, as every page does
         const dl = document.getElementById('wrapperDownloadLink');
         if (dl) dl.href = getUrl('/mcp-graphql-wrapper.js');
         const gl = document.getElementById('graphiqlLink');

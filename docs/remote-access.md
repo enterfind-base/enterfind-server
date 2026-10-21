@@ -13,10 +13,10 @@ It's also simply a way to reach your own instance's web UI from outside your net
 When you enable Remote Access, your instance opens an **outbound** connection to the Enterfind tunnel and takes up a stable **Server ID**. Your instance then has a public URL of the form:
 
 ```
-https://remote-<stage>.enterfind.com/<serverId>/
+https://<serverId>.remote-<stage>.enterfind.com/
 ```
 
-with the AI endpoints hanging off it — `/<serverId>/mcp` for MCP assistants and `/<serverId>/openapi.json` for ChatGPT. Your Server ID and full remote URL are shown on the Settings page under Remote Access.
+with the AI endpoints hanging off it — `/mcp` for MCP assistants and `/openapi.json` for ChatGPT. Your Server ID and full remote URL are shown on the Settings page under Remote Access.
 
 Because the connection is outbound, there's nothing to open on your router or firewall — the instance reaches out to the tunnel, and the tunnel relays traffic back.
 
@@ -32,7 +32,7 @@ Without an invite code, switching Remote Access on makes your instance try to re
 
 ## The tunnel is a hosted service
 
-The remote proxy that makes this work — the `remote-<stage>.enterfind.com` endpoint your instance connects out to — is **operated by Enterfind's creators as a hosted service**, not something that runs on your hardware. Your documents still live only on your instance; the proxy relays traffic to and from it. A few practical implications:
+The remote proxy that makes this work — the relay your instance connects out to and that serves its public URL — is **operated by Enterfind's creators as a hosted service**, not something that runs on your hardware. Your documents still live only on your instance; the proxy relays traffic to and from it. A few practical implications:
 
 - **It's subject to availability.** As a hosted service it can have maintenance windows or outages. When the proxy is unreachable, remote access is interrupted; your instance and its local/LAN access are unaffected and keep working normally.
 - **It may be throttled or capped.** Usage through the tunnel can be rate-limited or subject to limits. Enterfind surfaces your tunnel **usage** so you can see how much traffic you're carrying.

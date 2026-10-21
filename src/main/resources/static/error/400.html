@@ -5,27 +5,28 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>EnterFind - Bad Request</title>
     <script>
-        var _base = '';
+        // A legacy-shaped URL (remote-<stage>.enterfind.com/<serverId>/...) moves to the instance's
+        // own origin, as js/remote.js does. This is the page's only script.
         var _m = location.hostname.match(/^remote-(.+)\.enterfind\.com$/);
-        if (_m) { var _p = location.pathname.split('/').filter(Boolean); if (_p.length) _base = '/' + _p[0]; }
-        document.write('<link rel="icon" type="image/png" href="' + _base + '/favicon.png"><link rel="stylesheet" href="' + _base + '/css/style.css">');
+        var _id = location.pathname.split('/')[1];
+        if (_m && /^[0-9a-f]{12}$/.test(_id)) {
+            location.replace('https://' + _id + '.remote-' + _m[1] + '.enterfind.com'
+                + (location.pathname.slice(_id.length + 1) || '/') + location.search + location.hash);
+        }
     </script>
+    <link rel="icon" type="image/png" href="/favicon.png">
+    <link rel="stylesheet" href="/css/style.css">
 </head>
 <body>
     <header class="error-header">
         <div class="container">
-            <a href="#" id="homeLink"><img src="" id="logo" alt="EnterFind" style="height: 39px; vertical-align: middle;"></a>
+            <a href="/index.html" id="homeLink"><img src="/enterfind_logo.jpeg" id="logo" alt="EnterFind" style="height: 39px; vertical-align: middle;"></a>
         </div>
     </header>
     <main class="error-page">
         <div class="error-code error-danger">400</div>
         <p class="error-title">Bad request</p>
-        <a href="#" id="homeLink2" class="error-home-link">Go home</a>
+        <a href="/index.html" id="homeLink2" class="error-home-link">Go home</a>
     </main>
-    <script>
-        document.getElementById('homeLink').href = _base + '/index.html';
-        document.getElementById('homeLink2').href = _base + '/index.html';
-        document.getElementById('logo').src = _base + '/enterfind_logo.jpeg';
-    </script>
 </body>
 </html>
