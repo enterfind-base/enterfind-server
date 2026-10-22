@@ -5,6 +5,8 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.List;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -1105,5 +1107,27 @@ public class ApiKeyAuthenticationIntegrationTest extends BaseDatabaseTest {
 
         // Verify it exists in database
         assertTrue(apiUserDao.existsByNickname("valid-api"));
+    }
+
+    // ========== API session duration setting ==========
+
+    @Test
+    public void testApiSessionDurationSetting_isBounded() throws Exception {
+        String mutation = """
+            mutation {
+                setUserSetting(token: "%s", settingName: "ApiSessionDurationMinutes", value: "%s") { value }
+            }
+            """;
+
+        JsonNode accepted = graphQLClient.executeAndParse(String.format(mutation, adminToken, "1440"));
+        assertFalse(accepted.has("errors"), "Response has errors: " + accepted.path("errors"));
+        assertEquals(1440, authenticationService.getApiSessionDurationMinutes());
+
+        for (String rejected : List.of("0", "1441", "an hour")) {
+            JsonNode response = graphQLClient.executeAndParse(String.format(mutation, adminToken, rejected));
+            assertEquals("INVALID_ARGUMENT", response.path("errors").get(0).path("extensions").path("errorType").asString(),
+                "value " + rejected + " should be rejected");
+        }
+        assertEquals(1440, authenticationService.getApiSessionDurationMinutes());
     }
 }

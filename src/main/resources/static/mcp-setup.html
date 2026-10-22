@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MCP GraphQL Wrapper Setup - Enterfind Server</title>
+    <title>Local MCP Setup - Enterfind Server</title>
     <link rel="icon" type="image/png" href="favicon.png">
     <style>
         * {
@@ -67,6 +67,12 @@
             color: #764ba2;
             margin: 20px 0 10px 0;
             font-size: 1.3em;
+        }
+
+        .section h4 {
+            color: #764ba2;
+            margin: 16px 0 8px 0;
+            font-size: 1.1em;
         }
 
         .download-box {
@@ -235,14 +241,57 @@
     <div class="container">
         <div class="header">
             <img src="enterfind_logo.jpeg" alt="EnterFind" style="height: 48px; margin-bottom: 1rem;">
-            <h1>🔌 MCP GraphQL Wrapper</h1>
-            <p>Connect Claude Desktop Directly to Enterfind's GraphQL API</p>
+            <h1>🔌 Local MCP Setup</h1>
+            <p>Connect AI assistants running on your own machine or network directly to this Enterfind instance</p>
         </div>
 
         <div class="content">
-            <!-- What is this? -->
+            <!-- Which option -->
             <div class="section">
-                <h2>What is this?</h2>
+                <h2>Two local options</h2>
+                <p>An assistant that runs on a machine that can reach this instance directly needs neither Remote Access nor a public URL. For assistants in the cloud, such as claude.ai or ChatGPT, use <a href="public-ai-setup.html">Public AI Setup</a> instead.</p>
+                <ul>
+                    <li><a href="#cli-assistants"><strong>Claude Code or Gemini CLI</strong></a> connect to this instance's <code>/mcp</code> endpoint over HTTP. They need no extra software.</li>
+                    <li><a href="#desktop-wrapper"><strong>Claude Desktop</strong></a> launches local MCP servers as programs, so it connects through a small wrapper script that talks to the <code>/graphql</code> endpoint.</li>
+                </ul>
+            </div>
+
+            <!-- Claude Code / Gemini CLI -->
+            <div class="section" id="cli-assistants">
+                <h2>Claude Code and Gemini CLI</h2>
+                <p>Point the assistant at this instance's MCP endpoint:</p>
+                <pre><code id="mcpEndpoint">http://localhost:8080/mcp</code></pre>
+                <p>If this instance requires sign-in, also give the connection an Enterfind <strong>API key in its <code>Authorization</code> header</strong>. Create one in Settings → API keys; a READER key lets the assistant search and retrieve without changing anything. The server turns the key into a short session on each request, so the key never passes through the conversation and the assistant never asks you for it. Leave the header out on an instance without users.</p>
+
+                <div class="step">
+                    <h3>Claude Code</h3>
+                    <pre><code>claude mcp add --transport http enterfind <span class="mcp-endpoint">http://localhost:8080/mcp</span> \
+  --header "Authorization: Bearer efk_…"</code></pre>
+                    <p>Run <code>/mcp</code> inside Claude Code to confirm Enterfind is connected.</p>
+                </div>
+
+                <div class="step">
+                    <h3>Gemini CLI</h3>
+                    <p>In <code>~/.gemini/settings.json</code> (or a project-local <code>.gemini/settings.json</code>):</p>
+                    <pre><code>{
+  "mcpServers": {
+    "enterfind": {
+      "httpUrl": "<span class="mcp-endpoint">http://localhost:8080/mcp</span>",
+      "headers": { "Authorization": "Bearer efk_…" }
+    }
+  }
+}</code></pre>
+                    <p>Restart the CLI after editing the file by hand, then run <code>/mcp</code> to confirm Enterfind is connected.</p>
+                </div>
+
+                <div class="info-box">
+                    <strong>💡 Keys:</strong> the header can carry the key on its own (<code>efk_…</code>) or as <code>Bearer efk_…</code>. A bad or expired key comes back as a tool error that names the reason.
+                </div>
+            </div>
+
+            <!-- What is this? -->
+            <div class="section" id="desktop-wrapper">
+                <h2>Claude Desktop: the MCP GraphQL Wrapper</h2>
                 <p>The MCP GraphQL Wrapper is a Node.js script that allows Claude Desktop to connect <strong>directly to Enterfind's GraphQL API</strong>, without requiring a hosted MCP server endpoint. The wrapper implements the MCP protocol locally and translates tool calls to GraphQL queries.</p>
 
                 <div class="info-box">
@@ -258,13 +307,11 @@
                         <li><strong>No server changes needed</strong> - Works with any GraphQL endpoint</li>
                     </ul>
                 </div>
-            </div>
 
             <!-- Download -->
-            <div class="section">
-                <h2>Download</h2>
+                <h3>Download</h3>
                 <div class="download-box">
-                    <h3 style="margin: 0 0 20px 0; color: #667eea;">Get the Wrapper Script</h3>
+                    <h4 style="margin: 0 0 20px 0; color: #667eea;">Get the Wrapper Script</h4>
                     <a id="wrapperDownloadLink" href="/mcp-graphql-wrapper.js" download="mcp-graphql-wrapper.js" class="download-button">
                         ⬇️ Download mcp-graphql-wrapper.js
                     </a>
@@ -272,11 +319,9 @@
                         <strong>Requirements:</strong> Node.js v14 or higher
                     </p>
                 </div>
-            </div>
 
             <!-- How It Works -->
-            <div class="section">
-                <h2>How It Works</h2>
+                <h3>How It Works</h3>
                 <div style="text-align: center; margin: 30px 0;">
                     <div style="display: inline-block; text-align: left;">
                         <div style="padding: 20px; background: #f8f9fa; border-radius: 8px;">
@@ -293,19 +338,17 @@
                     <li><code>introspect_graphql_schema</code> - Get the GraphQL schema to discover available queries, mutations, and authentication requirements</li>
                     <li><code>execute_graphql</code> - Run any GraphQL query or mutation (pass token as a variable for authenticated operations)</li>
                 </ul>
-            </div>
 
             <!-- Setup Instructions -->
-            <div class="section">
-                <h2>Setup Instructions</h2>
+                <h3>Setup Instructions</h3>
 
                 <div class="step">
-                    <h3><span class="step-number">1</span>Download the Script</h3>
+                    <h4><span class="step-number">1</span>Download the Script</h4>
                     <p>Download <code>mcp-graphql-wrapper.js</code> using the button above and save it to a convenient location.</p>
                 </div>
 
                 <div class="step">
-                    <h3><span class="step-number">2</span>Test the Connection</h3>
+                    <h4><span class="step-number">2</span>Test the Connection</h4>
                     <p>Verify the wrapper can communicate with your server:</p>
                     <pre><code>echo '{"jsonrpc":"2.0","method":"initialize","params":{},"id":1}' | \
   node mcp-graphql-wrapper.js https://your-server-url/graphql</code></pre>
@@ -313,7 +356,7 @@
                 </div>
 
                 <div class="step">
-                    <h3><span class="step-number">3</span>Configure Claude Desktop</h3>
+                    <h4><span class="step-number">3</span>Configure Claude Desktop</h4>
 
                     <div class="platform-tabs">
                         <div class="platform-tab active" onclick="showPlatform('macos')">
@@ -325,7 +368,7 @@
                     </div>
 
                     <div id="macos-content" class="platform-content active">
-                        <h4>macOS Configuration:</h4>
+                        <h5>macOS Configuration:</h5>
                         <p>1. Open the configuration file:</p>
                         <pre><code>nano ~/Library/Application\ Support/Claude/claude_desktop_config.json</code></pre>
 
@@ -346,7 +389,7 @@
                     </div>
 
                     <div id="windows-content" class="platform-content">
-                        <h4>Windows Configuration:</h4>
+                        <h5>Windows Configuration:</h5>
                         <p>1. Open the configuration file:</p>
                         <pre><code>%APPDATA%\Claude\claude_desktop_config.json</code></pre>
 
@@ -368,12 +411,12 @@
                 </div>
 
                 <div class="step">
-                    <h3><span class="step-number">4</span>Restart Claude Desktop</h3>
+                    <h4><span class="step-number">4</span>Restart Claude Desktop</h4>
                     <p>Completely quit Claude Desktop and restart it. Your MCP server should now be available!</p>
                 </div>
 
                 <div class="step">
-                    <h3><span class="step-number">5</span>Verify Connection</h3>
+                    <h4><span class="step-number">5</span>Verify Connection</h4>
                     <div class="success-box">
                         <strong>✅ Success indicators:</strong>
                         <ul>
@@ -383,33 +426,29 @@
                         </ul>
                     </div>
                 </div>
-            </div>
 
             <!-- Troubleshooting -->
-            <div class="section">
-                <h2>Troubleshooting</h2>
+                <h3>Troubleshooting</h3>
 
-                <h3>Wrapper won't start</h3>
+                <h4>Wrapper won't start</h4>
                 <p>Check Claude Desktop logs:</p>
                 <ul>
                     <li><strong>macOS:</strong> <code>~/Library/Logs/Claude/mcp*.log</code></li>
                     <li><strong>Windows:</strong> <code>%APPDATA%\Claude\logs\mcp*.log</code></li>
                 </ul>
 
-                <h3>Connection refused</h3>
+                <h4>Connection refused</h4>
                 <ul>
                     <li>Verify your server is running</li>
                     <li>Check the server URL in your configuration</li>
                     <li>Ensure your firewall allows the connection</li>
                 </ul>
 
-                <h3>SSL certificate errors</h3>
+                <h4>SSL certificate errors</h4>
                 <p>The wrapper accepts self-signed certificates by default. For production use with valid certificates, you may need to modify the script.</p>
-            </div>
 
             <!-- Important Notes -->
-            <div class="section">
-                <h2>Important Notes</h2>
+                <h3>Important Notes</h3>
 
                 <div class="warning-box">
                     <strong>⚠️ Security:</strong> This wrapper is designed for local/trusted network use. It bypasses SSL certificate verification for self-signed certificates. Do not use this for untrusted or internet-accessible servers.
@@ -418,15 +457,13 @@
                 <div class="info-box">
                     <strong>💡 For Internet-Accessible Servers:</strong> If you plan to make your MCP server publicly accessible on the internet, you should implement OAuth 2.1 authentication and use Claude Desktop's "Add custom connector" UI instead of this wrapper.
                 </div>
-            </div>
 
             <!-- Authentication -->
-            <div class="section">
-                <h2>Authentication</h2>
+                <h3>Authentication</h3>
                 <p>If your Enterfind server requires authentication, the wrapper uses a stateless approach where the AI manages tokens via GraphQL:</p>
 
                 <div class="step">
-                    <h3>🔐 Authentication Flow</h3>
+                    <h4>🔐 Authentication Flow</h4>
                     <ol>
                         <li>Ask Claude to introspect the schema: <em>"What operations are available?"</em></li>
                         <li>Check if auth is required: Claude calls <code>isAuthenticationRequired</code> query via <code>execute_graphql</code></li>
@@ -439,11 +476,9 @@
                 <div class="info-box">
                     <strong>💡 Stateless Design:</strong> The wrapper does not store tokens—the AI is responsible for including the token in each authenticated request. This makes authentication explicit and discoverable via GraphQL introspection.
                 </div>
-            </div>
 
             <!-- Example Usage -->
-            <div class="section">
-                <h2>Example Server URLs</h2>
+                <h3>Example Server URLs</h3>
                 <ul>
                     <li><code>http://localhost:8080/graphql</code> - Local server on same machine</li>
                     <li><code>http://192.168.1.100:8080/graphql</code> - Server on local network</li>
@@ -485,6 +520,12 @@
         if (dl) dl.href = getUrl('/mcp-graphql-wrapper.js');
         const gl = document.getElementById('graphiqlLink');
         if (gl) gl.href = getUrl('/graphiql');
+
+        // Show this instance's own MCP endpoint, as the browser reached it
+        const endpoint = window.location.origin + getUrl('/mcp');
+        const shown = document.getElementById('mcpEndpoint');
+        if (shown) shown.textContent = endpoint;
+        document.querySelectorAll('.mcp-endpoint').forEach(el => { el.textContent = endpoint; });
     </script>
 </body>
 </html>

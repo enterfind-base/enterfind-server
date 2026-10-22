@@ -21,6 +21,7 @@ public enum UserSettingName {
     // Authentication settings
     SESSION_DURATION_MINUTES("SessionDurationMinutes"),
     REMEMBER_ME_DURATION_DAYS("RememberMeDurationDays"),
+    API_SESSION_DURATION_MINUTES("ApiSessionDurationMinutes"),
 
     // UI settings
     BANNER("Banner");

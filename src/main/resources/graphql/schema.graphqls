@@ -150,7 +150,7 @@ type Query {
     currentUser(token: String): HumanUser
     humanUsers(token: String): [HumanUser!]!
     humanUser(token: String, id: String!): HumanUser
-    userSetup(token: String!): UserSetupInfo
+    userSetup(setupToken: String!): UserSetupInfo
     
     # API Keys
     apiUsers(token: String): [ApiUser!]!

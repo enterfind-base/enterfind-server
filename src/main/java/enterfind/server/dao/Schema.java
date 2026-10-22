@@ -16,6 +16,7 @@ import enterfind.server.model.UserSettingName;
 import enterfind.server.scan.treatment.FaceRecognitionTreatmentHandler;
 import enterfind.server.scan.treatment.TreatmentUtils;
 import enterfind.server.security.ConfigEncryptor;
+import enterfind.server.service.AuthenticationService;
 import jakarta.annotation.PostConstruct;
 
 /**
@@ -64,6 +65,7 @@ public class Schema {
                         resetStuckDataSources();
                         addItrKeyValueIndex();
                         addFolderScanFailureCountColumn();
+                        invalidateLongLivedApiSessions();
                 } finally {
                         schemaUpdateInProgress = false;
                 }
@@ -528,6 +530,8 @@ public class Schema {
                 setDefaultUserSetting(UserSettingName.SESSION_DURATION_MINUTES.name(), "1440");
                 // Set default "remember me" duration (30 days)
                 setDefaultUserSetting(UserSettingName.REMEMBER_ME_DURATION_DAYS.name(), "30");
+                // Set default API session duration (60 minutes)
+                setDefaultUserSetting(UserSettingName.API_SESSION_DURATION_MINUTES.name(), "60");
 
                 // AI provider defaults live in SYSTEM_SETTINGS.
                 setDefaultSystemSetting(AiSettingName.AI_PROVIDER.name(), "NONE");
@@ -651,6 +655,27 @@ public class Schema {
                                 ALTER TABLE FOLDERS
                                 ADD COLUMN IF NOT EXISTS scan_failure_count INTEGER NOT NULL DEFAULT 0
                                 """);
+        }
+
+        /**
+         * End every API session created under the old rule, which let a session live as long as its
+         * key (up to two years). Sessions now last at most
+         * {@link AuthenticationService#MAX_API_SESSION_DURATION_MINUTES}, so a valid session longer
+         * than that can only be an old one; clients holding one log in again.
+         *
+         * <p>Guarded on that shape, which the migration itself destroys, per the idiom of the other
+         * migrations here. Old sessions shorter than the bound are left alone: they are short already.
+         */
+        void invalidateLongLivedApiSessions() {
+                int invalidated = dbAccess.update("""
+                                UPDATE API_SESSIONS SET is_valid = false
+                                WHERE is_valid = true
+                                  AND date_expires > date_created + make_interval(mins => ?)
+                                """, AuthenticationService.MAX_API_SESSION_DURATION_MINUTES);
+                if (invalidated > 0) {
+                        logger.info("Invalidated {} API session(s) longer than {} minutes", invalidated,
+                                        AuthenticationService.MAX_API_SESSION_DURATION_MINUTES);
+                }
         }
 
         private void addItrKeyValueIndex() {

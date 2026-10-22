@@ -42,6 +42,10 @@ query {
 
 On an instance with authentication off, the `token` argument can be omitted entirely.
 
+**Tokens from an API key are short-lived.** A session created by `loginWithApiKey` lasts 60 minutes, and never longer than the key itself. A long-running script should either log in again before `expiresAt`, or log in again when a call fails with "Authentication required". Logging in costs one call with no second factor, so short sessions limit how long a leaked token stays useful without making scripts work harder. An admin can change the length with the `ApiSessionDurationMinutes` setting, between 1 and 1440 minutes.
+
+AI assistants connected over MCP don't need any of this: they carry the API key in the connector's `Authorization` header, and the server manages the session for them. See [Connecting AI Assistants](ai-access.md).
+
 ## Common operations
 
 A tour of the operations you'll reach for most. Browse GraphiQL for the full set and every field.

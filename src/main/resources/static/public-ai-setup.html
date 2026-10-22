@@ -186,7 +186,11 @@
                 </div>
 
                 <div class="success-box">
-                    <strong>🔐 About authentication:</strong> Enterfind's authentication is part of the GraphQL protocol itself, not a separate HTTP login. In practice this means the assistant discovers, by inspecting Enterfind, whether an instance needs credentials — and if it does, it asks you for your API key in the conversation and uses it for the rest of the session. Public demo instances need nothing; a private instance prompts you when it first needs access. There is no key to configure inside the assistant's settings.
+                    <strong>🔐 About authentication:</strong> Public demo instances need nothing. A private instance can be reached in one of two ways:
+                    <ul>
+                        <li><strong>Logging in inside the conversation.</strong> You ask the assistant to log in and give it your API key's nickname and value, and it calls <code>loginWithApiKey</code> itself. ChatGPT works this way, and so does Muse AI (Meta).</li>
+                        <li><strong>An API key in the connector's <code>Authorization</code> header</strong>, for assistants that refuse to handle a key typed into the chat. Claude does refuse, so for Claude the header is required on a private instance. You set the header once when adding the connector (steps below). The instance turns the key into a short session on its side, so the key never passes through the conversation and the assistant never asks for it. The Gemini CLI supports the header too, and it is the safer choice wherever it's available.</li>
+                    </ul>
                 </div>
             </div>
 
@@ -207,10 +211,11 @@
                 <h3>Steps</h3>
                 <ol>
                     <li>In Claude, open the connectors settings and choose to add a custom connector.</li>
-                    <li>Paste your <code>/mcp</code> URL as the connector URL and save.</li>
-                    <li>Claude introspects the endpoint and its Enterfind tools become available in your conversations.</li>
+                    <li>Paste your <code>/mcp</code> URL as the connector URL and leave authentication at <strong>No sign-in</strong>.</li>
+                    <li>If the instance requires authentication, add a <strong>Request header</strong> named <code>authorization</code> with the value <code>Bearer efk_…</code>, using an API key from Settings → API keys.</li>
+                    <li>Save. Claude introspects the endpoint and its Enterfind tools become available in your conversations.</li>
                 </ol>
-                <p style="margin-top: 15px;">That's the whole setup. If the instance requires authentication, Claude will ask you for your API key when it first needs access (see the note above).</p>
+                <p style="margin-top: 15px;">That's the whole setup. Headers can't be edited once the connector is saved, so a new key means removing and re-adding the connector; create the key with a long expiry. Request headers are a Claude beta that not every account shows yet.</p>
             </div>
 
             <!-- ChatGPT -->
@@ -271,7 +276,8 @@
     }
   }
 }</code></pre>
-                <p>If the instance requires authentication, Gemini asks for your API key when it first needs access, the same as the other assistants (see the note at the top). There is no key to place in <code>settings.json</code>.</p>
+                <p>If the instance requires authentication, add your API key as a header next to <code>httpUrl</code>:</p>
+                <pre><code>"headers": { "Authorization": "Bearer efk_…" }</code></pre>
 
                 <h3>If it doesn't work</h3>
                 <ul>

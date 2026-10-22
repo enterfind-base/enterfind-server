@@ -2,6 +2,8 @@
 package enterfind.server.controller;
 import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.Base64;
 import java.util.List;
@@ -11,6 +13,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.graphql.data.method.annotation.Argument;
+import org.springframework.graphql.data.method.annotation.ContextValue;
 import org.springframework.graphql.data.method.annotation.MutationMapping;
 import org.springframework.graphql.data.method.annotation.QueryMapping;
 import org.springframework.graphql.data.method.annotation.SchemaMapping;
@@ -32,6 +35,7 @@ import enterfind.server.dao.TreatmentDao;
 import enterfind.server.model.FaceEmbeddingMode;
 import enterfind.server.model.ItemFace;
 import enterfind.server.dao.UserSettingsDao;
+import enterfind.server.mcp.McpGraphQlContext;
 import enterfind.server.exception.InvalidArgumentException;
 import enterfind.server.exception.NotFoundException;
 import enterfind.server.model.About;
@@ -73,6 +77,7 @@ import enterfind.server.scan.treatment.FaceEmbeddingModelService;
 import enterfind.server.security.AuthContext;
 import enterfind.server.service.AiProviderFactory;
 import enterfind.server.service.AiService;
+import enterfind.server.service.AuthenticationService;
 import enterfind.server.service.ItemStorageService;
 import enterfind.server.util.ProfileHelper;
 import reactor.core.publisher.Flux;
@@ -238,8 +243,24 @@ public class GraphQLController {
         checkSchemaReady();
         authContext.requireMutationAdmin(token);
         UserSettingName enumName = UserSettingName.fromString(settingName);
+        if (enumName == UserSettingName.API_SESSION_DURATION_MINUTES) {
+            requireIntegerInRange(enumName, value, 1, AuthenticationService.MAX_API_SESSION_DURATION_MINUTES);
+        }
         userSettingsDao.setSetting(enumName, value);
         return new UserSetting(enumName.toString(), value);
+    }
+
+    private static void requireIntegerInRange(UserSettingName name, String value, int min, int max) {
+        String message = name + " must be a whole number between " + min + " and " + max;
+        int parsed;
+        try {
+            parsed = Integer.parseInt(value.trim());
+        } catch (NumberFormatException e) {
+            throw new InvalidArgumentException(message);
+        }
+        if (parsed < min || parsed > max) {
+            throw new InvalidArgumentException(message);
+        }
     }
 
     @MutationMapping
@@ -742,6 +763,39 @@ public class GraphQLController {
             return List.of();
         }
         return faceDao.getFacesByItemId(item.getId());
+    }
+
+    /**
+     * Through MCP the link is absolute, so the model never has to know or guess the host, and when
+     * the connector's header was exchanged for a session it also carries that session as {@code ?t=}:
+     * the model holds no token to add. Through {@code /graphql} neither context value is set and the
+     * link stays relative, which the web UI resolves against its own origin.
+     */
+    @SchemaMapping(typeName = "Item", field = "downloadLink")
+    public String getDownloadLink(Item item,
+            @ContextValue(name = McpGraphQlContext.SESSION_TOKEN, required = false) String token,
+            @ContextValue(name = McpGraphQlContext.PUBLIC_BASE_URL, required = false) String baseUrl) {
+        return withSessionToken(item.getDownloadLink(), token, baseUrl);
+    }
+
+    /** As {@link #getDownloadLink}. */
+    @SchemaMapping(typeName = "Item", field = "previewLink")
+    public String getPreviewLink(Item item,
+            @ContextValue(name = McpGraphQlContext.SESSION_TOKEN, required = false) String token,
+            @ContextValue(name = McpGraphQlContext.PUBLIC_BASE_URL, required = false) String baseUrl) {
+        return withSessionToken(item.getPreviewLink(), token, baseUrl);
+    }
+
+    private static String withSessionToken(String relativeLink, String token, String baseUrl) {
+        if (relativeLink == null || baseUrl == null) {
+            return relativeLink;
+        }
+        String absolute = baseUrl + relativeLink;
+        if (token == null) {
+            return absolute;
+        }
+        // Item links never carry a query string of their own
+        return absolute + "?t=" + URLEncoder.encode(token, StandardCharsets.UTF_8);
     }
 
     @SchemaMapping(typeName = "Item", field = "rawBase64Content")

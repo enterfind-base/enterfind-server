@@ -473,8 +473,8 @@ export async function createHumanUser(nickname, userLevel) {
  */
 export async function getUserSetup(setupToken) {
     const query = `
-        query UserSetup($token: String!) {
-            userSetup(token: $token) {
+        query UserSetup($setupToken: String!) {
+            userSetup(setupToken: $setupToken) {
                 nickname
                 qrCodeDataUrl
                 totpSecret
@@ -489,7 +489,7 @@ export async function getUserSetup(setupToken) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
             query,
-            variables: { token: setupToken }
+            variables: { setupToken }
         })
     });
 

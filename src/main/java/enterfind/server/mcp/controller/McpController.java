@@ -2,6 +2,7 @@ package enterfind.server.mcp.controller;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -16,7 +17,10 @@ import tools.jackson.databind.ObjectMapper;
 
 import enterfind.server.mcp.model.JsonRpcRequest;
 import enterfind.server.mcp.model.JsonRpcResponse;
+import enterfind.server.mcp.model.McpCallContext;
 import enterfind.server.mcp.service.McpService;
+import enterfind.server.util.PublicBaseUrl;
+import jakarta.servlet.http.HttpServletRequest;
 
 /**
  * REST controller for MCP (Model Context Protocol) endpoints
@@ -29,10 +33,12 @@ public class McpController {
 
     private final McpService mcpService;
     private final ObjectMapper objectMapper;
+    private final PublicBaseUrl publicBaseUrl;
 
-    public McpController(McpService mcpService, ObjectMapper objectMapper) {
+    public McpController(McpService mcpService, ObjectMapper objectMapper, PublicBaseUrl publicBaseUrl) {
         this.mcpService = mcpService;
         this.objectMapper = objectMapper;
+        this.publicBaseUrl = publicBaseUrl;
     }
 
     /**
@@ -76,6 +82,11 @@ public class McpController {
      * The server responds with either:
      * - Content-Type: application/json for single response
      * - Content-Type: text/event-stream for streaming responses
+     *
+     * An Authorization header carries the connector's API key, which the execution tool exchanges
+     * for a session. A key that cannot be exchanged is a tool error, not an HTTP 401: a connector
+     * configured with a header has no sign-in, and a 401 would send it into OAuth discovery. The
+     * request with no header at all stays its own path (ApiKeyExchange.Absent).
      */
     @PostMapping(
         consumes = MediaType.APPLICATION_JSON_VALUE,
@@ -83,11 +94,16 @@ public class McpController {
     )
     public Object handleMcpRequest(
             @RequestBody JsonRpcRequest request,
-            @RequestHeader(value = "Accept", defaultValue = MediaType.APPLICATION_JSON_VALUE) String acceptHeader) {
+            @RequestHeader(value = "Accept", defaultValue = MediaType.APPLICATION_JSON_VALUE) String acceptHeader,
+            @RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) String authorization,
+            HttpServletRequest httpRequest) {
 
         try {
-            logger.info("Received MCP request: method={}, id={}, Accept={}",
-                request.getMethod(), request.getId(), acceptHeader);
+            McpCallContext callContext = new McpCallContext(authorization, publicBaseUrl.of(httpRequest),
+                publicBaseUrl.viaRemoteAccess(httpRequest));
+            logger.info("Received MCP request: method={}, id={}, Accept={}, auth={}",
+                request.getMethod(), request.getId(), acceptHeader,
+                callContext.hasAuthorization() ? "present" : "absent");
 
             // Validate JSON-RPC version
             if (!"2.0".equals(request.getJsonrpc())) {
@@ -106,7 +122,7 @@ public class McpController {
             }
 
             // Handle the request
-            JsonRpcResponse response = mcpService.handleRequest(request);
+            JsonRpcResponse response = mcpService.handleRequest(request, callContext);
 
             // Check if client accepts SSE
             if (acceptHeader.contains(MediaType.TEXT_EVENT_STREAM_VALUE)) {

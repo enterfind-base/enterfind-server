@@ -1,17 +1,23 @@
 package enterfind.server.dao;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import java.time.LocalDateTime;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 
 import enterfind.server.BaseDatabaseTest;
+import enterfind.server.model.UserLevel;
 
 /**
  * Tests for the DML migrations in Schema.java: {@code migratePathSeparatorToSlash},
- * {@code removeInapplicableItemTreatments} and {@code createSettings}.
+ * {@code removeInapplicableItemTreatments}, {@code createSettings} and
+ * {@code invalidateLongLivedApiSessions}.
  *
  * <p>A migration that changes the schema rather than the data needs its own class, because it must
  * put the schema back afterwards — {@link FaceTableMigrationTest} is the worked example.
@@ -20,6 +26,15 @@ class SchemaMigrationTest extends BaseDatabaseTest {
 
     @Autowired
     private Schema schema;
+
+    @Autowired
+    private HumanUserDao humanUserDao;
+
+    @Autowired
+    private ApiUserDao apiUserDao;
+
+    @Autowired
+    private ApiSessionDao apiSessionDao;
 
     private DaoTestFixtures fixtures;
 
@@ -265,5 +280,31 @@ class SchemaMigrationTest extends BaseDatabaseTest {
         assertEquals(0, userRows);
         assertEquals(1, systemRows);
         assertEquals("ANTHROPIC", provider);
+    }
+
+    @Test
+    void invalidateLongLivedApiSessions_endsOldRuleSessionsOnce() {
+        String creatorId = humanUserDao.create("admin", "secret", "codes", UserLevel.ADMIN).id();
+        String apiUserId = apiUserDao.create("migration-api", "efk_migration", UserLevel.READER, creatorId,
+            LocalDateTime.now().plusDays(365)).id();
+        // Under the old rule a session lived as long as its key
+        apiSessionDao.create("old-rule-session", apiUserId, LocalDateTime.now().plusDays(30));
+        apiSessionDao.create("short-session", apiUserId, LocalDateTime.now().plusMinutes(30));
+
+        schema.invalidateLongLivedApiSessions();
+
+        assertFalse(isValid("old-rule-session"));
+        assertTrue(isValid("short-session"));
+
+        // A second boot finds nothing left to do
+        apiSessionDao.create("new-session", apiUserId, LocalDateTime.now().plusMinutes(60));
+        schema.invalidateLongLivedApiSessions();
+
+        assertTrue(isValid("short-session"));
+        assertTrue(isValid("new-session"));
+    }
+
+    private boolean isValid(String token) {
+        return dbAccess.queryForObject("SELECT is_valid FROM API_SESSIONS WHERE token = ?", Boolean.class, token);
     }
 }
