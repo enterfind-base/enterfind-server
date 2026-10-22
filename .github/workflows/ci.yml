@@ -146,8 +146,12 @@ jobs:
             ghcr.io/enterfind-base/enterfind-server-${{ env.STAGE }}:${{ env.VERSION }}
             ghcr.io/enterfind-base/enterfind-server-${{ env.STAGE }}:latest
 
-      # One release per build, tagged v<version> at this commit. GitHub marks the newest one
-      # "latest", so .../releases/latest/download/enterfind-server.jar is the stable download URL.
+      # One release per build, tagged v<version> at this commit, marked "latest" explicitly, so
+      # .../releases/latest/download/enterfind-server.jar is the stable download URL. Beside the jar,
+      # enterfind-server.jar.sha256 (sha256sum format): the enterfind installer resolves releases
+      # without the GitHub API (its rate limit) and verifies the jar against this file. It is
+      # written to RUNNER_TEMP, not target/: Maven ran as root in the devcontainer, so the runner
+      # user cannot create files in target/.
       # The jar is published as built — the native stripping in the Dockerfile's jarprep stage
       # applies only to the image. cleanup.yml prunes old releases but keeps their tags.
       - name: Publish jar as GitHub Release
@@ -155,8 +159,12 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GH_REPO: ${{ github.repository }}
         run: |
-          gh release create "v$VERSION" target/enterfind-server.jar \
+          SUM="$RUNNER_TEMP/enterfind-server.jar.sha256"
+          (cd target && sha256sum enterfind-server.jar) > "$SUM"
+          (cd target && sha256sum --check --strict "$SUM")
+          gh release create "v$VERSION" target/enterfind-server.jar "$SUM" \
             --target "$GITHUB_SHA" \
+            --latest \
             --title "v$VERSION" \
             --notes "Enterfind server $VERSION, built from $GITHUB_SHA."
 
