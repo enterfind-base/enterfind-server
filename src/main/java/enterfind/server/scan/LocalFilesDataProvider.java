@@ -2,10 +2,12 @@ package enterfind.server.scan;
 
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
+import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.attribute.BasicFileAttributes;
@@ -135,6 +137,8 @@ public class LocalFilesDataProvider implements DataProviderInterface {
         
         try {
             return new FileInputStream(resolvedPath.toFile());
+        } catch (FileNotFoundException e) {
+            throw new NotFoundException("File not found: " + fullPath);
         } catch (IOException e) {
             throw new SystemIssueException("Error creating input stream for: " + resolvedPath, e);
         }
@@ -190,6 +194,10 @@ public class LocalFilesDataProvider implements DataProviderInterface {
                 }
                 
                 return normalizedPath;
+            } catch (NoSuchFileException ex) {
+                // The data source's own folder is gone (moved, unmounted, deleted): nothing under it
+                // can exist, which is a missing resource rather than a server fault
+                throw new NotFoundException("Data source folder does not exist: " + basePath);
             } catch (IOException ex) {
                 throw new SystemIssueException("Error validating path security: " + fullPath, ex);
             }

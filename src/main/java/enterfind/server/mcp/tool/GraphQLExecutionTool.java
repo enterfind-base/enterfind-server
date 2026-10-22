@@ -1,7 +1,9 @@
 package enterfind.server.mcp.tool;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -11,8 +13,12 @@ import org.springframework.stereotype.Component;
 
 import tools.jackson.databind.ObjectMapper;
 
+import enterfind.server.mcp.McpGraphQlContext;
+import enterfind.server.mcp.model.McpCallContext;
 import enterfind.server.mcp.model.ToolDefinition;
 import enterfind.server.mcp.model.ToolResult;
+import enterfind.server.security.ApiKeyCredentialResolver;
+import enterfind.server.security.ApiKeyExchange;
 import graphql.ExecutionResult;
 import graphql.GraphQLError;
 
@@ -26,21 +32,28 @@ public class GraphQLExecutionTool {
 
     private final ExecutionGraphQlService graphQlService;
     private final ObjectMapper objectMapper;
+    private final ApiKeyCredentialResolver credentialResolver;
 
-    public GraphQLExecutionTool(ExecutionGraphQlService graphQlService, ObjectMapper objectMapper) {
+    public GraphQLExecutionTool(ExecutionGraphQlService graphQlService, ObjectMapper objectMapper,
+                                ApiKeyCredentialResolver credentialResolver) {
         this.graphQlService = graphQlService;
         this.objectMapper = objectMapper;
+        this.credentialResolver = credentialResolver;
     }
 
-    public ToolDefinition getDefinition() {
+    /**
+     * @param headerAuth whether the connection carries an Authorization header; selects which way
+     *                   of authenticating, and of fetching documents, the description teaches
+     */
+    public ToolDefinition getDefinition(boolean headerAuth) {
         Map<String, Object> variablesProperty = Map.of(
             "type", "object",
-            "description", "Query variables as JSON object. Include 'token' for authenticated operations: { \"token\": \"your-token\", ... }"
+            "description", ToolText.variablesParameter(headerAuth)
         );
 
         Map<String, Object> queryProperty = Map.of(
             "type", "string",
-            "description", "GraphQL query or mutation string"
+            "description", ToolText.QUERY_PARAMETER
         );
 
         Map<String, Object> properties = Map.of(
@@ -56,31 +69,24 @@ public class GraphQLExecutionTool {
 
         return new ToolDefinition(
             "execute_graphql_query",
-            "Execute GraphQL queries against Enterfind document search system. " +
-            "PREREQUISITE: Call introspect_graphql_schema first to understand the schema. " +
-            "AUTHENTICATION: Most operations require a 'token' variable. Workflow: " +
-            "(1) Call 'isAuthenticationRequired' query to check if login is needed. " +
-            "(2) If auth required, call 'login' mutation with nickname and totpCode to get a token. " +
-            "(3) For authenticated operations, include token in variables: { \"token\": \"your-token\", ... }. " +
-            "SEARCH WORKFLOW: " +
-            "(1) Start with a broad 'search' query using searchString with keywords. " +
-            "(2) Call 'availableItemAttributeKeys' to discover facet dimensions. " +
-            "(3) Use 'getFacets' with attribute keys to see value distributions. " +
-            "(4) Refine with searchConditions array to filter by facet values. " +
-            "(5) Use 'itemAttributes' to get detailed metadata. " +
-            "TIPS: Combine searchString with searchConditions for precise results. Use skip/howmany for pagination. " +
-            "DOCUMENT RETRIEVAL: Construct URLs: /content/{dataSourceType}/{dataSourceName}/{folder}/{name}. " +
-            "Replace folder commas with slashes. URL-encode special characters.",
+            ToolText.executionDescription(headerAuth),
             inputSchema
         );
     }
 
     @SuppressWarnings("unchecked")
-    public ToolResult execute(Map<String, Object> arguments) {
+    public ToolResult execute(Map<String, Object> arguments, McpCallContext callContext) {
         try {
             String query = (String) arguments.get("query");
             if (query == null || query.isEmpty()) {
                 return ToolResult.error("Query parameter is required");
+            }
+
+            // Before the query is even looked at, so a bad key fails the same way however the
+            // query is formed.
+            ApiKeyExchange exchange = credentialResolver.resolve(callContext.authorization());
+            if (exchange instanceof ApiKeyExchange.Failed(String reason)) {
+                return ToolResult.error(reason);
             }
 
             Map<String, Object> variables = (Map<String, Object>) arguments.get("variables");
@@ -96,6 +102,14 @@ public class GraphQLExecutionTool {
                 "",         // id (empty string instead of null)
                 null        // locale
             );
+            Map<String, Object> context = new HashMap<>();
+            if (callContext.publicBaseUrl() != null) {
+                context.put(McpGraphQlContext.PUBLIC_BASE_URL, callContext.publicBaseUrl());
+            }
+            if (exchange instanceof ApiKeyExchange.Resolved(String sessionToken)) {
+                context.put(McpGraphQlContext.SESSION_TOKEN, sessionToken);
+            }
+            request.configureExecutionInput((input, builder) -> builder.graphQLContext(context).build());
 
             // Execute query
             ExecutionResult executionResult = graphQlService.execute(request)
@@ -120,7 +134,10 @@ public class GraphQLExecutionTool {
                         .toList();
                 String errors = objectMapper.writeValueAsString(errorSpecs);
                 logger.error("GraphQL query execution errors: {}", errors);
-                return ToolResult.error("GraphQL query failed: " + errors);
+                String hint = exchange instanceof ApiKeyExchange.Absent && isAuthenticationRequired(errorSpecs)
+                    ? ToolText.setupHint(Objects.toString(callContext.publicBaseUrl(), ""), callContext.viaRemoteAccess())
+                    : "";
+                return ToolResult.error("GraphQL query failed: " + errors + hint);
             }
         } catch (ClassCastException e) {
             logger.error("Invalid argument types", e);
@@ -129,5 +146,12 @@ public class GraphQLExecutionTool {
             logger.error("Error executing GraphQL query", e);
             return ToolResult.error("Error executing query: " + e.getMessage());
         }
+    }
+
+    private static boolean isAuthenticationRequired(List<Map<String, Object>> errorSpecs) {
+        return errorSpecs.stream()
+            .map(spec -> spec.get("extensions"))
+            .filter(Map.class::isInstance)
+            .anyMatch(extensions -> "AUTHENTICATION_REQUIRED".equals(((Map<?, ?>) extensions).get("errorCode")));
     }
 }

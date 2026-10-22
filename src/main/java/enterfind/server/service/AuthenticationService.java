@@ -33,7 +33,14 @@ public class AuthenticationService {
     private static final String TOKEN_CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
     private static final int DEFAULT_SESSION_DURATION_MINUTES = 1440; // 24 hours
     private static final int DEFAULT_REMEMBER_ME_DURATION_DAYS = 30;
-    private static final String API_KEY_PREFIX = "efk_";
+    private static final int DEFAULT_API_SESSION_DURATION_MINUTES = 60;
+    /**
+     * Upper bound on an API session's length. It keeps API sessions short, and it is what lets
+     * {@code Schema.invalidateLongLivedApiSessions()} recognise a session from the old
+     * expires-with-the-key rule: no session created under this rule can be longer.
+     */
+    public static final int MAX_API_SESSION_DURATION_MINUTES = 1440;
+    public static final String API_KEY_PREFIX = "efk_";
     private static final int API_KEY_SUFFIX_LENGTH = 32;
 
     private final HumanUserDao humanUserDao;
@@ -389,6 +396,25 @@ public class AuthenticationService {
     }
 
     /**
+     * Get API session duration from settings, clamped to 1..MAX_API_SESSION_DURATION_MINUTES so a
+     * row edited by hand cannot outlast the bound.
+     */
+    public int getApiSessionDurationMinutes() {
+        int minutes = userSettingsDao.getSetting(UserSettingName.API_SESSION_DURATION_MINUTES)
+            .map(Integer::parseInt)
+            .orElse(DEFAULT_API_SESSION_DURATION_MINUTES);
+        return Math.clamp(minutes, 1, MAX_API_SESSION_DURATION_MINUTES);
+    }
+
+    /**
+     * An API session lasts the configured API session duration, but never longer than its key.
+     */
+    LocalDateTime calculateApiSessionExpiry(ApiUser apiUser) {
+        LocalDateTime sessionEnd = LocalDateTime.now().plusMinutes(getApiSessionDurationMinutes());
+        return sessionEnd.isBefore(apiUser.dateExpires()) ? sessionEnd : apiUser.dateExpires();
+    }
+
+    /**
      * Get remember me duration from settings.
      */
     public int getRememberMeDurationDays() {
@@ -454,14 +480,26 @@ public class AuthenticationService {
             throw new InvalidArgumentException("Invalid credentials");
         }
 
-        // Create API session (expires when the API key expires)
-        ApiSession session = createApiSession(apiUser.id(), apiUser.dateExpires());
+        // A new API session costs one call with no second factor, so a long one buys nothing
+        ApiSession session = createApiSession(apiUser.id(), calculateApiSessionExpiry(apiUser));
 
         // Update last used
         apiUserDao.updateLastUsed(apiUser.id());
 
         logAuthEvent("API_LOGIN_SUCCESS", apiUser.id(), nickname);
         return session;
+    }
+
+    /**
+     * Look up an API user by key value alone, as a connector's Authorization header carries it.
+     * A miss is logged like every other failed API login, so an unknown key leaves an AUTH_EVENT.
+     */
+    public Optional<ApiUser> findApiUserByKey(String keyValue) {
+        Optional<ApiUser> apiUser = apiUserDao.findByKeyValue(keyValue);
+        if (apiUser.isEmpty()) {
+            logAuthEvent("API_LOGIN_FAILED_KEY_NOT_FOUND", null, null);
+        }
+        return apiUser;
     }
 
     /**

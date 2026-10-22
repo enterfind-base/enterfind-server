@@ -7,6 +7,8 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.time.Duration;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -20,10 +22,14 @@ import org.springframework.test.context.ActiveProfiles;
 import enterfind.server.BaseDatabaseTest;
 import enterfind.server.dao.HumanUserDao;
 import enterfind.server.dao.SessionDao;
+import enterfind.server.dao.UserSettingsDao;
 import enterfind.server.exception.InvalidArgumentException;
+import enterfind.server.model.ApiSession;
+import enterfind.server.model.ApiUser;
 import enterfind.server.model.HumanUser;
 import enterfind.server.model.Session;
 import enterfind.server.model.UserLevel;
+import enterfind.server.model.UserSettingName;
 import enterfind.server.service.AuthenticationService.TotpRegenerationResult;
 import enterfind.server.service.AuthenticationService.UserCreationResult;
 
@@ -36,6 +42,9 @@ public class AuthenticationServiceTest extends BaseDatabaseTest {
 
     @Autowired
     private HumanUserDao humanUserDao;
+
+    @Autowired
+    private UserSettingsDao userSettingsDao;
 
     @SuppressWarnings("unused")
     @Autowired
@@ -349,5 +358,63 @@ public class AuthenticationServiceTest extends BaseDatabaseTest {
 
         // Inactive user should not have any permissions
         assertFalse(authenticationService.hasPermission(session.token(), UserLevel.READER));
+    }
+
+    // ========== API session lifetime ==========
+
+    @Test
+    public void testApiSessionExpiry_defaultsToSixtyMinutes() {
+        ApiUser apiUser = apiUserExpiringAt(LocalDateTime.now().plusDays(365));
+
+        LocalDateTime expiry = authenticationService.calculateApiSessionExpiry(apiUser);
+
+        assertEquals(60, authenticationService.getApiSessionDurationMinutes());
+        assertWithinSeconds(LocalDateTime.now().plusMinutes(60), expiry);
+    }
+
+    @Test
+    public void testApiSessionExpiry_neverOutlivesItsKey() {
+        LocalDateTime keyExpiry = LocalDateTime.now().plusMinutes(10);
+
+        assertEquals(keyExpiry, authenticationService.calculateApiSessionExpiry(apiUserExpiringAt(keyExpiry)));
+    }
+
+    @Test
+    public void testApiSessionDuration_isClampedToItsBounds() {
+        userSettingsDao.setSetting(UserSettingName.API_SESSION_DURATION_MINUTES, "0");
+        assertEquals(1, authenticationService.getApiSessionDurationMinutes());
+
+        userSettingsDao.setSetting(UserSettingName.API_SESSION_DURATION_MINUTES, "5000");
+        assertEquals(AuthenticationService.MAX_API_SESSION_DURATION_MINUTES,
+            authenticationService.getApiSessionDurationMinutes());
+    }
+
+    @Test
+    public void testLoginWithApiKey_sessionUsesApiSessionDuration() {
+        UserCreationResult admin = authenticationService.createUser("admin", UserLevel.ADMIN, null);
+        var created = authenticationService.createApiUser("script", UserLevel.READER, 365, admin.user().id());
+
+        ApiSession session = authenticationService.loginWithApiKey("script", created.keyValue());
+
+        assertWithinSeconds(LocalDateTime.now().plusMinutes(60), session.dateExpires());
+    }
+
+    @Test
+    public void testFindApiUserByKey() {
+        UserCreationResult admin = authenticationService.createUser("admin", UserLevel.ADMIN, null);
+        var created = authenticationService.createApiUser("script", UserLevel.READER, 365, admin.user().id());
+
+        assertEquals("script", authenticationService.findApiUserByKey(created.keyValue()).orElseThrow().nickname());
+        assertTrue(authenticationService.findApiUserByKey("efk_unknown").isEmpty());
+    }
+
+    private static ApiUser apiUserExpiringAt(LocalDateTime dateExpires) {
+        return new ApiUser("api1", "api", "efk_x", UserLevel.READER, null,
+            LocalDateTime.now(), dateExpires, null, true);
+    }
+
+    private static void assertWithinSeconds(LocalDateTime expected, LocalDateTime actual) {
+        long seconds = Math.abs(Duration.between(expected, actual).toSeconds());
+        assertTrue(seconds <= 5, "expected " + expected + " but was " + actual);
     }
 }

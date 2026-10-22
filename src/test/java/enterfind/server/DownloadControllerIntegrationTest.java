@@ -163,6 +163,27 @@ public class DownloadControllerIntegrationTest extends BaseDatabaseTest {
     }
 
     @Test
+    void downloadFromADataSourceWhoseFolderIsGoneShouldReturn404() throws Exception {
+        testDataSourceName = "Download Test Source";
+        createDataSourceViaGraphQL(testDataSourceName, tempTestDir.toString());
+
+        DataSourceInterface ds = dataSourceDao.findByNameAndType(testDataSourceName, DataSourceType.LOCAL_FILESYSTEM)
+            .orElseThrow(() -> new RuntimeException("Datasource not found"));
+        scanner.scan(ds);
+
+        // The source's own folder disappears after indexing (moved, unmounted, deleted); its rows remain
+        TestFileUtils.deleteDirectoryRecursively(tempTestDir);
+
+        String encodedName = URLEncoder.encode(testDataSourceName, StandardCharsets.UTF_8).replace("+", "%20");
+        String base = "http://localhost:" + port + "/content/local-filesystem/" + encodedName;
+
+        assertThat(restTemplate.getForEntity(base + "/subf/text.txt", byte[].class).getStatusCode().value())
+            .isEqualTo(404);
+        assertThat(restTemplate.getForEntity(base + "/ocrable.pdf", byte[].class).getStatusCode().value())
+            .isEqualTo(404);
+    }
+
+    @Test
     void downloadShouldWorkWithSpacesInFileName() throws Exception {
         testDataSourceName = "Download Test Source";
         createDataSourceViaGraphQL(testDataSourceName, tempTestDir.toString());

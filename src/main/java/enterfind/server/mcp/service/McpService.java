@@ -13,6 +13,7 @@ import tools.jackson.databind.ObjectMapper;
 
 import enterfind.server.mcp.model.JsonRpcRequest;
 import enterfind.server.mcp.model.JsonRpcResponse;
+import enterfind.server.mcp.model.McpCallContext;
 import enterfind.server.mcp.model.ServerInfo;
 import enterfind.server.mcp.model.ToolDefinition;
 import enterfind.server.mcp.model.ToolResult;
@@ -46,16 +47,23 @@ public class McpService {
     }
 
     /**
-     * Handle JSON-RPC 2.0 request
+     * Handle JSON-RPC 2.0 request with no HTTP request behind it.
      */
     public JsonRpcResponse handleRequest(JsonRpcRequest request) {
+        return handleRequest(request, McpCallContext.NONE);
+    }
+
+    /**
+     * Handle JSON-RPC 2.0 request
+     */
+    public JsonRpcResponse handleRequest(JsonRpcRequest request, McpCallContext callContext) {
         try {
             logger.info("Handling MCP request: method={}", request.getMethod());
 
             return switch (request.getMethod()) {
                 case "initialize" -> handleInitialize(request);
-                case "tools/list" -> handleToolsList(request);
-                case "tools/call" -> handleToolsCall(request);
+                case "tools/list" -> handleToolsList(request, callContext);
+                case "tools/call" -> handleToolsCall(request, callContext);
                 default -> JsonRpcResponse.error(
                     -32601,
                     "Method not found: " + request.getMethod(),
@@ -93,14 +101,17 @@ public class McpService {
     }
 
     /**
-     * Handle tools/list request
+     * Handle tools/list request. The descriptions follow whether the connection carries an
+     * Authorization header — its presence only: the key is not checked here, so listing tools
+     * never creates a session, and a bad key is reported when a tool is called.
      */
-    private JsonRpcResponse handleToolsList(JsonRpcRequest request) {
+    private JsonRpcResponse handleToolsList(JsonRpcRequest request, McpCallContext callContext) {
         logger.info("Listing available tools");
 
+        boolean headerAuth = callContext.hasAuthorization();
         List<ToolDefinition> tools = List.of(
-            introspectionTool.getDefinition(),
-            executionTool.getDefinition()
+            introspectionTool.getDefinition(headerAuth),
+            executionTool.getDefinition(headerAuth)
         );
 
         Map<String, Object> result = Map.of("tools", tools);
@@ -110,7 +121,7 @@ public class McpService {
     /**
      * Handle tools/call request
      */
-    private JsonRpcResponse handleToolsCall(JsonRpcRequest request) {
+    private JsonRpcResponse handleToolsCall(JsonRpcRequest request, McpCallContext callContext) {
         try {
             // Parse params
             JsonNode paramsNode = objectMapper.valueToTree(request.getParams());
@@ -128,7 +139,8 @@ public class McpService {
             // Route to appropriate tool
             ToolResult toolResult = switch (toolName) {
                 case "introspect_graphql_schema" -> introspectionTool.execute(arguments);
-                case "execute_graphql_query" -> executionTool.execute(arguments);
+                // Introspection needs no auth and must not create sessions, so it gets no context
+                case "execute_graphql_query" -> executionTool.execute(arguments, callContext);
                 default -> ToolResult.error("Unknown tool: " + toolName);
             };
 

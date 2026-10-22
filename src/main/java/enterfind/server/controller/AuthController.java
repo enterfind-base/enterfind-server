@@ -114,14 +114,14 @@ public class AuthController {
     }
 
     @QueryMapping
-    public UserSetupInfoDto userSetup(@Argument String token) {
+    public UserSetupInfoDto userSetup(@Argument String setupToken) {
         checkSchemaReady();
         // This is a public query - no auth required
 
         // Clean up expired tokens first
         setupTokens.entrySet().removeIf(entry -> entry.getValue().expires().isBefore(LocalDateTime.now()));
 
-        SetupTokenData tokenData = setupTokens.get(token);
+        SetupTokenData tokenData = setupTokens.get(setupToken);
 
         if (tokenData == null) {
             // Token not found - either invalid, expired, or already used
@@ -132,12 +132,12 @@ public class AuthController {
         Optional<HumanUser> user = humanUserDao.findById(tokenData.userId());
         if (user.isEmpty()) {
             // User was deleted - remove token and return error
-            setupTokens.remove(token);
+            setupTokens.remove(setupToken);
             return new UserSetupInfoDto("Unknown", "", "", List.of(), true);
         }
 
         // Remove token immediately (one-time use)
-        setupTokens.remove(token);
+        setupTokens.remove(setupToken);
 
         return new UserSetupInfoDto(
             user.get().nickname(),

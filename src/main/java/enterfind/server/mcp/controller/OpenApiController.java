@@ -9,37 +9,27 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import enterfind.server.service.RemoteAccessService;
-import enterfind.server.util.ProfileHelper;
+import enterfind.server.util.PublicBaseUrl;
 import jakarta.servlet.http.HttpServletRequest;
 
 /**
  * Exposes an OpenAPI 3.1 document describing the Enterfind GraphQL endpoint.
- * The server URL is derived dynamically from the incoming request so that the
- * document is correct regardless of how the instance is accessed (localhost,
- * LAN address, HTTPS domain, etc.).
- *
- * When a request arrives via the remote-access tunnel, the
- * {@code X-Enterfind-Tunnel-Proxy} header is present (injected by
- * {@link enterfind.server.service.tunnel.TunnelRequestHandler}). In that case
- * the server URL is built as
- * {@code https://<serverId>.remote-<stage>.enterfind.com} using live values
- * from {@link RemoteAccessService} and {@link ProfileHelper}.
+ * The server URL is derived dynamically from the incoming request by
+ * {@link PublicBaseUrl}, so that the document is correct regardless of how the
+ * instance is accessed (localhost, LAN address, HTTPS domain, remote access).
  */
 @RestController
 public class OpenApiController {
 
-    private final RemoteAccessService remoteAccessService;
-    private final ProfileHelper profileHelper;
+    private final PublicBaseUrl publicBaseUrl;
 
-    public OpenApiController(RemoteAccessService remoteAccessService, ProfileHelper profileHelper) {
-        this.remoteAccessService = remoteAccessService;
-        this.profileHelper = profileHelper;
+    public OpenApiController(PublicBaseUrl publicBaseUrl) {
+        this.publicBaseUrl = publicBaseUrl;
     }
 
     @GetMapping(value = "/openapi.json", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<Map<String, Object>> openApiSpec(HttpServletRequest request) {
-        String serverUrl = buildServerUrl(request);
+        String serverUrl = publicBaseUrl.of(request);
 
         Map<String, Object> spec = new LinkedHashMap<>();
         spec.put("openapi", "3.1.0");
@@ -55,20 +45,6 @@ public class OpenApiController {
         spec.put("paths", buildPaths());
 
         return ResponseEntity.ok(spec);
-    }
-
-    private String buildServerUrl(HttpServletRequest request) {
-        if ("1".equals(request.getHeader("X-Enterfind-Tunnel-Proxy"))) {
-            String stage = profileHelper.getActiveProfile();
-            String serverId = remoteAccessService.getConfig().serverId();
-            return "https://" + serverId + ".remote-" + stage + ".enterfind.com";
-        }
-        String scheme = request.getScheme();
-        String host = request.getServerName();
-        int port = request.getServerPort();
-        boolean isDefaultPort = ("http".equals(scheme) && port == 80)
-                || ("https".equals(scheme) && port == 443);
-        return scheme + "://" + host + (isDefaultPort ? "" : ":" + port);
     }
 
     private Map<String, Object> buildPaths() {

@@ -84,7 +84,7 @@ public class GraphQLIntrospectionTool {
         this.objectMapper = objectMapper;
     }
 
-    public ToolDefinition getDefinition() {
+    public ToolDefinition getDefinition(boolean headerAuth) {
         // No parameters. There was an "includeDescriptions" flag here, but execute() never
         // read it, so it was inert — and descriptions are the point of this tool: the search
         // contract (term scoping, quoting, the short-term and large-document limits) lives in
@@ -97,23 +97,7 @@ public class GraphQLIntrospectionTool {
 
         return new ToolDefinition(
             "introspect_graphql_schema",
-            "Get the GraphQL schema for Enterfind document search system. IMPORTANT: Call this FIRST before using execute_graphql_query. " +
-            "AUTHENTICATION: Most operations have a 'token: String' argument. Workflow: " +
-            "(1) Call 'isAuthenticationRequired' query to check if login is needed. " +
-            "(2) If auth required, call 'login' mutation with nickname and totpCode to get a token. " +
-            "(3) Pass the token in variables for subsequent operations: { \"token\": \"your-token\", ... }. " +
-            "KEY OPERATIONS: (1) 'search' query for finding documents with faceted filtering, " +
-            "(2) 'availableItemAttributeKeys' for discovering facet dimensions, " +
-            "(3) 'getFacets' for getting facet values and counts, (4) 'itemAttributes' for detailed item metadata. " +
-            "SEARCH: 'search' takes two different kinds of filter and they do not mean the same thing. " +
-            "'searchString' spans the whole item — each term may be satisfied from a file name or from " +
-            "document text independently — and is the right default for finding documents about a topic. " +
-            "A 'searchConditions' entry filters one named attribute, and all of its terms must share a " +
-            "single value of that key. In both, whitespace separates terms and a double-quoted term must " +
-            "appear contiguous and in order. " +
-            "The schema's own descriptions carry the full contract, including which fields match characters " +
-            "versus whole words and the limits on very short terms and very large documents — read them " +
-            "rather than inferring behaviour from operation names.",
+            ToolText.introspectionDescription(headerAuth),
             inputSchema
         );
     }

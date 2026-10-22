@@ -256,7 +256,7 @@ public class AuthGraphQLIntegrationTest extends BaseDatabaseTest {
         // Use the setup token to get setup info
         String setupQuery = String.format("""
             query {
-                userSetup(token: "%s") {
+                userSetup(setupToken: "%s") {
                     nickname
                     qrCodeDataUrl
                     totpSecret
@@ -297,7 +297,7 @@ public class AuthGraphQLIntegrationTest extends BaseDatabaseTest {
         // First use of token - should work
         String setupQuery = String.format("""
             query {
-                userSetup(token: "%s") {
+                userSetup(setupToken: "%s") {
                     nickname
                     alreadyUsed
                 }
@@ -316,7 +316,7 @@ public class AuthGraphQLIntegrationTest extends BaseDatabaseTest {
     public void testUserSetup_invalidToken() throws Exception {
         String setupQuery = """
             query {
-                userSetup(token: "invalid-token-12345") {
+                userSetup(setupToken: "invalid-token-12345") {
                     nickname
                     alreadyUsed
                 }
@@ -365,7 +365,7 @@ public class AuthGraphQLIntegrationTest extends BaseDatabaseTest {
         String newSetupToken = data.path("setupToken").asString();
         String setupQuery = String.format("""
             query {
-                userSetup(token: "%s") {
+                userSetup(setupToken: "%s") {
                     nickname
                     qrCodeDataUrl
                     alreadyUsed

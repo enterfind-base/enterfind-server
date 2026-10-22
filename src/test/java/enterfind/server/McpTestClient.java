@@ -1,5 +1,8 @@
 package enterfind.server;
 
+import java.util.LinkedHashMap;
+import java.util.Map;
+
 import org.springframework.boot.resttestclient.TestRestTemplate;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
@@ -23,6 +26,8 @@ public class McpTestClient {
     private final ObjectMapper objectMapper;
     private final int port;
     private int requestIdCounter = 1;
+    private String authorization;
+    private final Map<String, String> extraHeaders = new LinkedHashMap<>();
 
     /**
      * Create an McpTestClient using a new TestRestTemplate instance.
@@ -57,6 +62,21 @@ public class McpTestClient {
     }
 
     /**
+     * Send this value as the Authorization header on every later request, as a connector configured
+     * with a request header does; null sends none.
+     */
+    public void setAuthorization(String authorization) {
+        this.authorization = authorization;
+    }
+
+    /**
+     * Send this header on every later request, as a proxy in front of the server would add it.
+     */
+    public void setHeader(String name, String value) {
+        extraHeaders.put(name, value);
+    }
+
+    /**
      * Execute an MCP request and return the raw HTTP response.
      *
      * @param request the JSON-RPC request
@@ -65,6 +85,10 @@ public class McpTestClient {
     public ResponseEntity<JsonRpcResponse> execute(JsonRpcRequest request) {
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
+        if (authorization != null) {
+            headers.set(HttpHeaders.AUTHORIZATION, authorization);
+        }
+        extraHeaders.forEach(headers::set);
 
         HttpEntity<JsonRpcRequest> httpRequest = new HttpEntity<>(request, headers);
 
@@ -85,6 +109,10 @@ public class McpTestClient {
     public ResponseEntity<String> executeWithSse(JsonRpcRequest request) {
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
+        if (authorization != null) {
+            headers.set(HttpHeaders.AUTHORIZATION, authorization);
+        }
+        extraHeaders.forEach(headers::set);
         headers.set("Accept", MediaType.TEXT_EVENT_STREAM_VALUE);
 
         HttpEntity<JsonRpcRequest> httpRequest = new HttpEntity<>(request, headers);
