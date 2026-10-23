@@ -1,5 +1,7 @@
 package enterfind.server.dao;
 
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Timestamp;
@@ -7,6 +9,8 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.jdbc.core.RowMapper;
 import org.jspecify.annotations.NonNull;
@@ -22,6 +26,8 @@ import enterfind.server.util.Utilities;
  */
 @Repository
 public class ApiUserDao {
+
+    private static final Logger logger = LoggerFactory.getLogger(ApiUserDao.class);
 
     private final DBAccess dbAccess;
     private final ConfigEncryptor configEncryptor;
@@ -94,23 +100,38 @@ public class ApiUserDao {
 
     /**
      * Find an API user by key value.
+     *
+     * <p>Scans every API user and compares decrypted keys. With encryption on, a stored key is
+     * AES-GCM ciphertext under a random IV, so encrypting {@code keyValue} again never reproduces it
+     * and an SQL equality match cannot work. The comparison is constant-time.
+     *
+     * <p>A row whose key cannot be decrypted, e.g. after the encryption key changed, cannot match
+     * anything, so it is skipped rather than failing the lookup for every other key.
      */
     public Optional<ApiUser> findByKeyValue(String keyValue) {
-        String encryptedKeyValue = configEncryptor.encrypt(keyValue);
-        
-        String sql = """
-            SELECT id, nickname, key_value, user_level, created_by_user_id,
-                   date_created, date_expires, date_last_used, is_active
-            FROM API_USERS
-            WHERE key_value = ?
-            """;
-
-        try {
-            ApiUser apiUser = dbAccess.queryForObject(sql, new ApiUserRowMapper(), encryptedKeyValue);
-            return Optional.ofNullable(apiUser);
-        } catch (EmptyResultDataAccessException e) {
+        if (keyValue == null || keyValue.isEmpty()) {
             return Optional.empty();
         }
+        byte[] candidate = keyValue.getBytes(StandardCharsets.UTF_8);
+
+        String sql = "SELECT id, key_value FROM API_USERS";
+        List<String[]> rows = dbAccess.query(sql,
+            (rs, rowNum) -> new String[] { rs.getString("id"), rs.getString("key_value") });
+
+        for (String[] row : rows) {
+            String storedKeyValue;
+            try {
+                storedKeyValue = configEncryptor.decrypt(row[1]);
+            } catch (RuntimeException e) {
+                logger.warn("Skipping API user {} in key lookup: its key cannot be decrypted", row[0]);
+                continue;
+            }
+            if (storedKeyValue != null
+                    && MessageDigest.isEqual(candidate, storedKeyValue.getBytes(StandardCharsets.UTF_8))) {
+                return findById(row[0]);
+            }
+        }
+        return Optional.empty();
     }
 
     /**
