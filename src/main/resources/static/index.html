@@ -47,13 +47,13 @@
                 <!-- Add Condition Panel -->
                 <div id="addConditionPanel" class="add-condition-panel">
                     <form id="addConditionForm" class="add-condition-form">
-                        <div class="form-group">
+                        <div class="form-group condition-field-group">
                             <label class="form-label">Field</label>
-                            <input id="conditionField" type="text" placeholder="Select field..." style="width: 150px;" />
+                            <input id="conditionField" type="text" placeholder="Select field..." />
                         </div>
-                        <div class="form-group">
+                        <div class="form-group condition-operation-group">
                             <label class="form-label">Operation</label>
-                            <select id="conditionOperation" class="form-select" style="width: 120px;">
+                            <select id="conditionOperation" class="form-select">
                                 <option value="LIKE">Contains</option>
                                 <option value="NOT_LIKE">Does Not Contain</option>
                                 <option value="EQUAL">Equals</option>
@@ -62,11 +62,11 @@
                                 <option value="GREATER">Greater Than</option>
                             </select>
                         </div>
-                        <div class="form-group" style="flex: 1;">
+                        <div class="form-group condition-value-group">
                             <label class="form-label">Value</label>
                             <input type="text" id="conditionValue" class="form-input" placeholder="Words, or &quot;an exact phrase&quot;...">
                         </div>
-                        <div class="form-group">
+                        <div class="form-group condition-submit-group">
                             <label class="form-label">&nbsp;</label>
                             <button type="submit" class="btn btn-primary">Add</button>
                         </div>

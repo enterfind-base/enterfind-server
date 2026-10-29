@@ -55,15 +55,11 @@ export function formatDate(dateString) {
         }
         
         // Use Intl.DateTimeFormat for explicit timezone-aware formatting
-        // This ensures dates are displayed in the client's local timezone
+        // This ensures dates are displayed in the client's local timezone.
+        // Numeric date in the browser locale's own order and clock, seconds kept
         const options = {
-            year: 'numeric',
-            month: 'short',
-            day: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit',
-            second: '2-digit',
-            hour12: true
+            dateStyle: 'short',
+            timeStyle: 'medium'
         };
         return new Intl.DateTimeFormat(undefined, options).format(date);
     } catch {
