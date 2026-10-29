@@ -477,12 +477,12 @@ function renderSettingRow(tbody, setting, isPassword = false, saveSetting = setU
     const placeholder = isPassword ? '**** enter to replace' : '';
 
     tr.innerHTML = `
-        <td style="padding-right: 2rem; vertical-align: middle; width: 30%;">${escapeHtml(setting.settingName)}</td>
-        <td style="padding-right: 2rem; vertical-align: middle;">
-            <input type="${inputType}" value="${escapeHtml(displayValue)}" placeholder="${placeholder}" data-setting="${escapeHtml(setting.settingName)}" style="width: 100%; padding: 0.4rem 0.6rem; margin-right: 0.5rem;" />
+        <td class="setting-name">${escapeHtml(setting.settingName)}</td>
+        <td class="setting-value">
+            <input type="${inputType}" value="${escapeHtml(displayValue)}" placeholder="${placeholder}" data-setting="${escapeHtml(setting.settingName)}" />
         </td>
-        <td style="vertical-align: middle; width: 15%;">
-            <button class="btn btn-primary btn-save" data-setting="${escapeHtml(setting.settingName)}" style="padding: 0.4rem 1.2rem;">Save</button>
+        <td class="setting-action">
+            <button class="btn btn-primary btn-save" data-setting="${escapeHtml(setting.settingName)}">Save</button>
         </td>
     `;
     tbody.appendChild(tr);

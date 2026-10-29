@@ -96,10 +96,10 @@
                 <a href="sources.html" class="btn btn-secondary btn-sm" style="margin-bottom: 0.5rem;">← Back to Sources</a>
                 <h1 class="page-title" id="pageTitle">Data Source</h1>
             </div>
-            <div id="actionButtons" style="display: none;">
+            <div id="actionButtons" class="page-actions" style="display: none;">
                 <button id="scanBtn" class="btn btn-secondary">Scan Now</button>
-                <button id="clearDataBtn" class="btn btn-secondary" style="margin-left: 0.5rem;">Clear Data</button>
-                <button id="deleteBtn" class="btn btn-danger" style="margin-left: 0.5rem;">Delete</button>
+                <button id="clearDataBtn" class="btn btn-secondary">Clear Data</button>
+                <button id="deleteBtn" class="btn btn-danger">Delete</button>
             </div>
         </div>
     </header>
@@ -144,19 +144,23 @@
                         
                         <div class="form-group">
                             <label class="form-label">Schedule (optional)</label>
-                            <div style="display: flex; gap: 0.5rem; align-items: center;">
-                                <input type="text" id="cronPattern" class="form-input" placeholder="e.g., 0 0 * * * (daily at midnight)" style="flex: 1;">
-                                <button type="button" id="cronExplainBtn" class="btn btn-secondary btn-sm" style="display: none;">AI: Explain</button>
-                                <button type="button" id="cronSuggestBtn" class="btn btn-secondary btn-sm" style="display: none;">AI: Suggest</button>
+                            <div class="input-with-actions">
+                                <input type="text" id="cronPattern" class="form-input" placeholder="e.g., 0 0 * * * (daily at midnight)">
+                                <div class="input-actions" style="display: none;">
+                                    <button type="button" id="cronExplainBtn" class="btn btn-secondary btn-sm">AI: Explain</button>
+                                    <button type="button" id="cronSuggestBtn" class="btn btn-secondary btn-sm">AI: Suggest</button>
+                                </div>
                             </div>
                         </div>
                         
                         <div class="form-group">
                             <label class="form-label">Skip Files Pattern (optional)</label>
-                            <div style="display: flex; gap: 0.5rem; align-items: center;">
-                                <input type="text" id="skipFiles" class="form-input" placeholder="e.g., .*\.jpg|.*\.tmp (regex patterns to exclude)" style="flex: 1;">
-                                <button type="button" id="skipExplainBtn" class="btn btn-secondary btn-sm" style="display: none;">AI: Explain</button>
-                                <button type="button" id="skipSuggestBtn" class="btn btn-secondary btn-sm" style="display: none;">AI: Suggest</button>
+                            <div class="input-with-actions">
+                                <input type="text" id="skipFiles" class="form-input" placeholder="e.g., .*\.jpg|.*\.tmp (regex patterns to exclude)">
+                                <div class="input-actions" style="display: none;">
+                                    <button type="button" id="skipExplainBtn" class="btn btn-secondary btn-sm">AI: Explain</button>
+                                    <button type="button" id="skipSuggestBtn" class="btn btn-secondary btn-sm">AI: Suggest</button>
+                                </div>
                             </div>
                             <small style="color: var(--text-secondary); font-size: 0.75rem;">Files matching these regex patterns will be excluded from indexing</small>
                         </div>
@@ -245,19 +249,23 @@
                         <form id="inlineEditForm" style="margin-top: 1rem;">
                             <div class="form-group">
                                 <label class="form-label">Schedule (optional)</label>
-                                <div style="display: flex; gap: 0.5rem; align-items: center;">
-                                    <input type="text" id="editCronPattern" class="form-input" placeholder="e.g., 0 0 * * * (daily at midnight)" style="flex: 1;">
-                                    <button type="button" id="editCronExplainBtn" class="btn btn-secondary btn-sm" style="display: none;">AI: Explain</button>
-                                    <button type="button" id="editCronSuggestBtn" class="btn btn-secondary btn-sm" style="display: none;">AI: Suggest</button>
+                                <div class="input-with-actions">
+                                    <input type="text" id="editCronPattern" class="form-input" placeholder="e.g., 0 0 * * * (daily at midnight)">
+                                    <div class="input-actions" style="display: none;">
+                                        <button type="button" id="editCronExplainBtn" class="btn btn-secondary btn-sm">AI: Explain</button>
+                                        <button type="button" id="editCronSuggestBtn" class="btn btn-secondary btn-sm">AI: Suggest</button>
+                                    </div>
                                 </div>
                             </div>
                             
                             <div class="form-group">
                                 <label class="form-label">Skip Files Pattern (optional)</label>
-                                <div style="display: flex; gap: 0.5rem; align-items: center;">
-                                    <input type="text" id="editSkipFiles" class="form-input" placeholder="e.g., .*\.jpg|.*\.tmp (regex patterns to exclude)" style="flex: 1;">
-                                    <button type="button" id="editSkipExplainBtn" class="btn btn-secondary btn-sm" style="display: none;">AI: Explain</button>
-                                    <button type="button" id="editSkipSuggestBtn" class="btn btn-secondary btn-sm" style="display: none;">AI: Suggest</button>
+                                <div class="input-with-actions">
+                                    <input type="text" id="editSkipFiles" class="form-input" placeholder="e.g., .*\.jpg|.*\.tmp (regex patterns to exclude)">
+                                    <div class="input-actions" style="display: none;">
+                                        <button type="button" id="editSkipExplainBtn" class="btn btn-secondary btn-sm">AI: Explain</button>
+                                        <button type="button" id="editSkipSuggestBtn" class="btn btn-secondary btn-sm">AI: Suggest</button>
+                                    </div>
                                 </div>
                                 <small style="color: var(--text-secondary); font-size: 0.75rem;">Files matching these regex patterns will be excluded from indexing</small>
                             </div>
@@ -547,15 +555,17 @@
         });
 
         function showAIButtons() {
+            // Each Explain/Suggest pair sits in one .input-actions group, hidden until AI is
+            // available, so the pair wraps below a narrow input as a unit
             // Show AI buttons for create form - Cron
             const explainBtn = $('cronExplainBtn');
             const suggestBtn = $('cronSuggestBtn');
             if (explainBtn) {
-                explainBtn.style.display = 'block';
+                explainBtn.parentElement.style.display = '';
                 explainBtn.addEventListener('click', () => handleExplainCron('cronPattern'));
             }
             if (suggestBtn) {
-                suggestBtn.style.display = 'block';
+                suggestBtn.parentElement.style.display = '';
                 suggestBtn.addEventListener('click', () => handleSuggestCron('cronPattern'));
             }
 
@@ -563,11 +573,11 @@
             const editExplainBtn = $('editCronExplainBtn');
             const editSuggestBtn = $('editCronSuggestBtn');
             if (editExplainBtn) {
-                editExplainBtn.style.display = 'block';
+                editExplainBtn.parentElement.style.display = '';
                 editExplainBtn.addEventListener('click', () => handleExplainCron('editCronPattern'));
             }
             if (editSuggestBtn) {
-                editSuggestBtn.style.display = 'block';
+                editSuggestBtn.parentElement.style.display = '';
                 editSuggestBtn.addEventListener('click', () => handleSuggestCron('editCronPattern'));
             }
 
@@ -575,11 +585,11 @@
             const skipExplainBtn = $('skipExplainBtn');
             const skipSuggestBtn = $('skipSuggestBtn');
             if (skipExplainBtn) {
-                skipExplainBtn.style.display = 'block';
+                skipExplainBtn.parentElement.style.display = '';
                 skipExplainBtn.addEventListener('click', () => handleExplainSkip('skipFiles'));
             }
             if (skipSuggestBtn) {
-                skipSuggestBtn.style.display = 'block';
+                skipSuggestBtn.parentElement.style.display = '';
                 skipSuggestBtn.addEventListener('click', () => handleSuggestSkip('skipFiles'));
             }
 
@@ -587,11 +597,11 @@
             const editSkipExplainBtn = $('editSkipExplainBtn');
             const editSkipSuggestBtn = $('editSkipSuggestBtn');
             if (editSkipExplainBtn) {
-                editSkipExplainBtn.style.display = 'block';
+                editSkipExplainBtn.parentElement.style.display = '';
                 editSkipExplainBtn.addEventListener('click', () => handleExplainSkip('editSkipFiles'));
             }
             if (editSkipSuggestBtn) {
-                editSkipSuggestBtn.style.display = 'block';
+                editSkipSuggestBtn.parentElement.style.display = '';
                 editSkipSuggestBtn.addEventListener('click', () => handleSuggestSkip('editSkipFiles'));
             }
         }
@@ -728,7 +738,7 @@
         async function renderViewMode() {
             $('formContent').style.display = 'none';
             $('viewContent').style.display = 'block';
-            $('actionButtons').style.display = 'block';
+            $('actionButtons').style.display = '';
             $('pageTitle').textContent = currentSource.name;
             document.title = `${currentSource.name} - EnterFind`;
 

@@ -15,6 +15,8 @@
 
         .page-header {
             display: flex;
+            flex-wrap: wrap;
+            gap: 0.75rem 1rem;
             justify-content: space-between;
             align-items: center;
             margin-bottom: 2rem;
@@ -113,6 +115,62 @@
 
         .btn-danger:hover {
             background: #fee2e2;
+        }
+
+        /* Too many columns for a narrow screen: each row becomes a card with the
+           nickname as its heading, one labelled line per field, then the actions */
+        @media (max-width: 899px) {
+            .users-table,
+            .users-table tbody,
+            .users-table tr,
+            .users-table td {
+                display: block;
+            }
+
+            .users-table thead {
+                display: none;
+            }
+
+            .users-table tr {
+                padding: 0.75rem 1rem;
+                border-bottom: 1px solid var(--border);
+            }
+
+            .users-table tr:last-child {
+                border-bottom: none;
+            }
+
+            .users-table td {
+                padding: 0.25rem 0;
+                border-bottom: none;
+            }
+
+            .users-table td[data-label] {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                gap: 1rem;
+                text-align: right;
+            }
+
+            .users-table td[data-label]::before {
+                content: attr(data-label);
+                font-size: 0.75rem;
+                font-weight: 600;
+                text-transform: uppercase;
+                color: var(--text-secondary);
+            }
+
+            .users-table .nickname-cell {
+                font-weight: 600;
+                overflow-wrap: anywhere;
+            }
+
+            .users-table td.actions-cell,
+            .users-table td .actions-cell {
+                display: flex;
+                padding-top: 0.5rem;
+            }
         }
 
         /* Modal styles */
@@ -559,7 +617,7 @@
                     $('emptyState').style.display = 'block';
                 } else {
                     renderUsersTable();
-                    $('usersTable').style.display = 'table';
+                    $('usersTable').style.display = '';
                 }
             } catch (error) {
                 console.error('Failed to load users:', error);
@@ -582,11 +640,11 @@
 
             tbody.innerHTML = users.map(user => `
                 <tr>
-                    <td>${escapeHtml(user.nickname)}</td>
-                    <td><span class="user-level ${user.userLevel.toLowerCase()}">${user.userLevel}</span></td>
-                    <td><span class="user-status ${user.isActive ? 'active' : 'inactive'}">${user.isActive ? 'Active' : 'Inactive'}</span></td>
-                    <td>${user.dateLastLogin ? formatDate(user.dateLastLogin) : 'Never'}</td>
-                    <td>${user.recoveryCodesRemaining} remaining</td>
+                    <td class="nickname-cell">${escapeHtml(user.nickname)}</td>
+                    <td data-label="Level"><span class="user-level ${user.userLevel.toLowerCase()}">${user.userLevel}</span></td>
+                    <td data-label="Status"><span class="user-status ${user.isActive ? 'active' : 'inactive'}">${user.isActive ? 'Active' : 'Inactive'}</span></td>
+                    <td data-label="Last Login">${user.dateLastLogin ? formatDate(user.dateLastLogin) : 'Never'}</td>
+                    <td data-label="Recovery Codes">${user.recoveryCodesRemaining} remaining</td>
                     <td class="actions-cell">
                         <button class="btn-icon" title="Toggle status" data-toggle-status="${escapeHtml(user.id)}" data-active="${user.isActive}" ${isOnlyUser ? 'disabled' : ''}>
                             ${user.isActive ? '&#128274;' : '&#128275;'}
@@ -640,7 +698,7 @@
                     $('apiKeysEmptyState').style.display = 'block';
                 } else {
                     renderApiKeysTable();
-                    $('apiKeysTable').style.display = 'table';
+                    $('apiKeysTable').style.display = '';
                 }
             } catch (error) {
                 console.error('Failed to load API keys:', error);
@@ -658,16 +716,16 @@
 
                 return `
                     <tr>
-                        <td>${escapeHtml(apiKey.nickname)}</td>
-                        <td><code style="font-size: 0.875rem; color: var(--text-secondary);">${escapeHtml(apiKey.keyValuePreview)}</code></td>
-                        <td><span class="user-level ${apiKey.userLevel.toLowerCase()}">${apiKey.userLevel}</span></td>
-                        <td>
+                        <td class="nickname-cell">${escapeHtml(apiKey.nickname)}</td>
+                        <td data-label="Key Preview"><code style="font-size: 0.875rem; color: var(--text-secondary);">${escapeHtml(apiKey.keyValuePreview)}</code></td>
+                        <td data-label="Level"><span class="user-level ${apiKey.userLevel.toLowerCase()}">${apiKey.userLevel}</span></td>
+                        <td data-label="Status">
                             <span class="user-status ${apiKey.isActive && !isExpired ? 'active' : 'inactive'}">
                                 ${isExpired ? 'Expired' : (apiKey.isActive ? 'Active' : 'Inactive')}
                             </span>
                         </td>
-                        <td style="color: ${isExpired ? '#dc2626' : 'inherit'};">${formatDate(apiKey.dateExpires)}</td>
-                        <td>${apiKey.dateLastUsed ? formatDate(apiKey.dateLastUsed) : '<span style="color: var(--text-secondary);">Never</span>'}</td>
+                        <td data-label="Expires" style="color: ${isExpired ? '#dc2626' : 'inherit'};">${formatDate(apiKey.dateExpires)}</td>
+                        <td data-label="Last Used">${apiKey.dateLastUsed ? formatDate(apiKey.dateLastUsed) : '<span style="color: var(--text-secondary);">Never</span>'}</td>
                         <td>
                             <div class="actions-cell">
                                 <button class="btn-icon" title="Delete" 

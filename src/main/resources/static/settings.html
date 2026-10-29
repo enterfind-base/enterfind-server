@@ -6,6 +6,89 @@
     <title>Settings - EnterFind</title>
     <link rel="icon" type="image/png" href="favicon.png">
     <link rel="stylesheet" href="css/style.css">
+    <style>
+        .settings-table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0 0.75rem;
+        }
+        .settings-table th {
+            text-align: left;
+            padding-right: 2rem;
+        }
+        .settings-table th:last-child {
+            padding-right: 0;
+        }
+        .settings-table td {
+            vertical-align: middle;
+        }
+        .setting-name {
+            width: 30%;
+            padding-right: 2rem;
+        }
+        .setting-value {
+            padding-right: 2rem;
+        }
+        .setting-value input {
+            width: 100%;
+            padding: 0.4rem 0.6rem;
+        }
+        .setting-action {
+            width: 15%;
+        }
+        .setting-action .btn-save {
+            padding: 0.4rem 1.2rem;
+        }
+        /* A card's text with a link button: the button drops below rather than squeezing */
+        .setup-link-row {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 0.5rem 1rem;
+        }
+        .setup-link-row .btn {
+            white-space: nowrap;
+        }
+        /* Server IDs and URLs have no break points of their own */
+        #remoteAccessContent code {
+            overflow-wrap: anywhere;
+        }
+
+        /* Three columns don't fit a phone: each setting becomes its name on one
+           line, then its input and Save side by side */
+        @media (max-width: 640px) {
+            .settings-table,
+            .settings-table tbody {
+                display: block;
+            }
+            .settings-table thead {
+                display: none;
+            }
+            .settings-table tr {
+                display: flex;
+                flex-wrap: wrap;
+                align-items: center;
+                gap: 0.25rem 0.5rem;
+                margin-bottom: 1rem;
+            }
+            .settings-table td {
+                display: block;
+                padding: 0;
+            }
+            .setting-name {
+                width: 100%;
+                font-weight: 500;
+                word-break: break-word;
+            }
+            .setting-value {
+                flex: 1;
+                min-width: 0;
+            }
+            .setting-action {
+                width: auto;
+            }
+        }
+    </style>
 </head>
 <body>
     <!-- Navigation -->
@@ -62,12 +145,12 @@
                     </div>
                     <div id="settingsError" style="display:none;"></div>
                     <div id="settingsTableContainer" style="display:none;">
-                        <table class="table" id="settingsTable" style="width:100%; border-collapse:separate; border-spacing:0 0.75rem;">
+                        <table class="table settings-table" id="settingsTable">
                             <thead>
                                 <tr>
-                                    <th style="padding-right: 2rem; text-align:left;">Setting</th>
-                                    <th style="padding-right: 2rem; text-align:left;">Value</th>
-                                    <th style="text-align:left;">Action</th>
+                                    <th>Setting</th>
+                                    <th>Value</th>
+                                    <th>Action</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -84,7 +167,7 @@
                     <h2 class="card-title">MCP Server</h2>
                 </div>
                 <div class="card-body">
-                    <div style="display: flex; align-items: center; gap: 0.5rem;">
+                    <div class="setup-link-row">
                         <p style="margin: 0;">Connect AI running on your own machine or network</p>
                         <a href="mcp-setup.html" target="_blank" class="btn btn-primary">Local MCP Setup</a>
                     </div>
@@ -97,7 +180,7 @@
                     <h2 class="card-title">Public AI Providers</h2>
                 </div>
                 <div class="card-body">
-                    <div style="display: flex; align-items: center; gap: 0.5rem;">
+                    <div class="setup-link-row">
                         <p style="margin: 0;">Connect hosted AI assistants (Claude, ChatGPT, Gemini). Requires Remote Access enabled below.</p>
                         <a href="public-ai-setup.html" target="_blank" class="btn btn-primary">Public AI Setup</a>
                     </div>
@@ -124,10 +207,10 @@
                                 Email <a href="mailto:info@enterfind.com">info@enterfind.com</a> for code.
                             </p>
                             <div style="display:flex; gap:0.75rem; flex-wrap:wrap; align-items:flex-end;">
-                                <label style="font-size:0.9rem;">
+                                <label style="font-size:0.9rem; flex:0 1 22rem; min-width:0;">
                                     Invite code<br>
-                                    <input type="text" id="remoteInviteCode" autocomplete="off"
-                                           spellcheck="false" placeholder="efi_…" style="min-width:22rem;">
+                                    <input type="text" id="remoteInviteCode" class="form-input" autocomplete="off"
+                                           spellcheck="false" placeholder="efi_…">
                                 </label>
                                 <button id="useInviteCodeBtn" class="btn">Use invite code</button>
                             </div>
@@ -187,7 +270,7 @@
                         <!-- Provider Selection -->
                         <div style="margin-bottom: 1.5rem;">
                             <label for="aiProviderSelect" style="font-weight: 600; margin-bottom: 0.5rem; display: block;">AI Provider</label>
-                            <select id="aiProviderSelect" style="padding: 0.5rem; border-radius: 4px; border: 1px solid var(--border-color); font-size: 0.95rem; min-width: 200px;">
+                            <select id="aiProviderSelect" style="padding: 0.5rem; border-radius: 4px; border: 1px solid var(--border-color); font-size: 0.95rem; min-width: 200px; max-width: 100%;">
                                 <option value="NONE">None (AI features disabled)</option>
                                 <option value="OLLAMA">Ollama (Self-hosted, privacy-focused)</option>
                                 <option value="OPENAI">OpenAI (GPT-4, GPT-4o models)</option>
@@ -199,7 +282,7 @@
                         <!-- Ollama Settings -->
                         <div id="ollamaSettings" class="provider-settings" style="display:none;">
                             <h3 style="margin-bottom: 0.75rem; font-size: 1.1rem; color: var(--text-secondary);">Ollama Configuration</h3>
-                            <table class="table" style="width:100%; border-collapse:separate; border-spacing:0 0.75rem;">
+                            <table class="table settings-table">
                                 <tbody id="ollamaSettingsTable">
                                     <!-- Ollama settings will be populated here -->
                                 </tbody>
@@ -209,7 +292,7 @@
                         <!-- OpenAI Settings -->
                         <div id="openaiSettings" class="provider-settings" style="display:none;">
                             <h3 style="margin-bottom: 0.75rem; font-size: 1.1rem; color: var(--text-secondary);">OpenAI Configuration</h3>
-                            <table class="table" style="width:100%; border-collapse:separate; border-spacing:0 0.75rem;">
+                            <table class="table settings-table">
                                 <tbody id="openaiSettingsTable">
                                     <!-- OpenAI settings will be populated here -->
                                 </tbody>
@@ -219,7 +302,7 @@
                         <!-- Anthropic Settings -->
                         <div id="anthropicSettings" class="provider-settings" style="display:none;">
                             <h3 style="margin-bottom: 0.75rem; font-size: 1.1rem; color: var(--text-secondary);">Anthropic Configuration</h3>
-                            <table class="table" style="width:100%; border-collapse:separate; border-spacing:0 0.75rem;">
+                            <table class="table settings-table">
                                 <tbody id="anthropicSettingsTable">
                                     <!-- Anthropic settings will be populated here -->
                                 </tbody>
@@ -252,7 +335,7 @@
 
                         <div style="margin-bottom: 1rem;">
                             <label for="faceModelSelect" style="font-weight: 600; margin-bottom: 0.5rem; display: block;">Embedding model</label>
-                            <select id="faceModelSelect" style="padding: 0.5rem; border-radius: 4px; border: 1px solid var(--border-color); font-size: 0.95rem; min-width: 260px;">
+                            <select id="faceModelSelect" style="padding: 0.5rem; border-radius: 4px; border: 1px solid var(--border-color); font-size: 0.95rem; min-width: 260px; max-width: 100%;">
                                 <option value="NONE">None (recognition disabled — detection unaffected)</option>
                                 <option value="BUILTIN">Built-in — EdgeFace-S (strictly non-commercial)</option>
                                 <option value="CUSTOM">Your model (bring your own URL)</option>

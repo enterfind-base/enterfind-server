@@ -14,7 +14,7 @@ const REPO_URL = 'https://github.com/enterfind-base/enterfind-server';
  * Center column: contact, license, and source link
  */
 const FOOTER_CENTER = `
-                <span class="auth-footer-center" style="justify-self: center; display: flex; align-items: center; gap: 0 0.5rem; flex-wrap: wrap; justify-content: center; max-width: 50vw; color: var(--text-secondary);">
+                <span class="auth-footer-center">
                     <a href="mailto:info@enterfind.com" class="auth-footer-contact">info@enterfind.com</a>
                     <span aria-hidden="true">·</span>
                     <a href="${REPO_URL}/blob/master/LICENSE" class="auth-footer-contact" target="_blank" rel="noopener">AGPLv3</a>

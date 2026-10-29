@@ -136,7 +136,7 @@ function attachEventListeners() {
             state.selectedFacet = value;
             updateUrl();
             if (value) {
-                await loadFacetValues();
+                await loadFacetValues({ focusFilter: true });
             }
         }
     });
@@ -654,7 +654,7 @@ function arraysEqual(arr1, arr2) {
 // Maximum length for facet values to display (longer values are excluded)
 const MAX_FACET_VALUE_LENGTH = 100;
 
-async function loadFacetValues() {
+async function loadFacetValues({ focusFilter = false } = {}) {
     const facetValuesDiv = $('facetValues');
     
     if (!state.selectedFacet) {
@@ -673,7 +673,7 @@ async function loadFacetValues() {
         });
         
         state.facetValues = facetValues || [];
-        renderFacetValues();
+        renderFacetValues(focusFilter);
         
     } catch (error) {
         console.error('Failed to load facet values:', error);
@@ -682,9 +682,11 @@ async function loadFacetValues() {
 }
 
 /**
- * Render values for the currently selected facet
+ * Render values for the currently selected facet.
+ * Only a facet the user just picked takes focus: focusing after a search would steal
+ * it from the search box and, where facets sit below the results, scroll the page away
  */
-function renderFacetValues() {
+function renderFacetValues(focusFilter = false) {
     const facetValuesDiv = $('facetValues');
     
     if (!state.selectedFacet || !state.facetValues || state.facetValues.length === 0) {
@@ -737,8 +739,9 @@ function renderFacetValues() {
                 }
             });
         });
-        // Focus on the filter input
-        filterInput.focus();
+        if (focusFilter) {
+            filterInput.focus();
+        }
     }
 }
 
