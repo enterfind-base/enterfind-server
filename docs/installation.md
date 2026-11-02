@@ -51,6 +51,7 @@ The image needs a PostgreSQL database and is configured through [environment var
 | [Compose: minimal](#compose-minimal) | app + Postgres — the common case |
 | [Compose: external PostgreSQL](#compose-external-postgresql) | app only, against a managed or existing Postgres |
 | [Compose: behind your own proxy](#compose-behind-your-own-proxy) | the minimal setup behind a proxy or tunnel you already run |
+| [Compose: behind an outbound HTTP proxy](#compose-behind-an-outbound-http-proxy) | any of these setups, on a network that reaches the internet only through an HTTP proxy |
 | [Compose: Traefik reference stack](#compose-traefik-reference-stack) | app + Postgres + Traefik with Let's Encrypt via AWS Route53 + Watchtower |
 | [Automatic updates](#automatic-updates-watchtower) | Watchtower, added to any Compose setup |
 
@@ -114,6 +115,61 @@ Notes:
 
 If you already terminate TLS with nginx, Caddy, Traefik, or a tunnel (Cloudflare Tunnel, Tailscale), run the [minimal setup](#compose-minimal), **don't** publish port 8080 to the internet, and put your proxy in front of `http://enterfind:8080` (or the host port). Enterfind serves plain HTTP; your proxy handles the certificate.
 
+### Compose: behind an outbound HTTP proxy
+
+If the host reaches the internet only through an HTTP proxy, the container has to be told about it: Docker does not pass the host's environment into containers, so an `HTTPS_PROXY` exported on the host is not seen by Enterfind. Enterfind reads the standard variables `HTTPS_PROXY`, `HTTP_PROXY` and `NO_PROXY` (the lowercase spellings work too) and uses the proxy for everything it fetches from the internet: AI model downloads, [Remote Access](remote-access.md), cloud AI providers and S3. Only `http://host:port` proxies are supported, without credentials.
+
+Add these lines to the `enterfind` service's `environment:` in whichever Compose setup above you use:
+
+```yaml
+      HTTPS_PROXY: ${HTTPS_PROXY:-}
+      HTTP_PROXY: ${HTTP_PROXY:-}
+      NO_PROXY: ${NO_PROXY:-}
+```
+
+and set the values in your shell or in `.env`:
+
+```bash
+HTTPS_PROXY=http://proxy.example:3128
+HTTP_PROXY=http://proxy.example:3128
+NO_PROXY=localhost
+```
+
+Left empty, the variables mean no proxy. Alternatively, Docker's client configuration `~/.docker/config.json` passes a proxy into every container that user starts with `docker run` or `docker compose`, with no change to the Compose file:
+
+```json
+{
+  "proxies": {
+    "default": {
+      "httpsProxy": "http://proxy.example:3128",
+      "httpProxy": "http://proxy.example:3128",
+      "noProxy": "localhost,127.0.0.1"
+    }
+  }
+}
+```
+
+At startup Enterfind logs what it uses, in one line:
+
+```
+Egress proxy: https=proxy.example:3128 http=proxy.example:3128 bypass=localhost|*.localhost|127.*|[::1] (from environment)
+```
+
+- **Other services on the same Compose network** — a MinIO for an S3 data source, an Ollama for AI — are reached through the proxy too unless they are in `NO_PROXY`, by the name Enterfind uses for them, for example `NO_PROXY=localhost,minio,ollama`. The proxy cannot resolve those names, so without the entry those connections fail. Loopback is always reached directly, and the database connection does not use the proxy: `postgres` need not be listed.
+- **Pulling the image** is done by the Docker daemon, which does not use any of the above. If `docker pull` times out, give the daemon its own proxy in `/etc/docker/daemon.json` and restart Docker (`sudo systemctl restart docker`):
+
+  ```json
+  {
+    "proxies": {
+      "https-proxy": "http://proxy.example:3128",
+      "http-proxy": "http://proxy.example:3128",
+      "no-proxy": "localhost,127.0.0.1"
+    }
+  }
+  ```
+
+  On Docker Desktop, set the proxy in its settings instead.
+
 ### Compose: Traefik reference stack
 
 The repository ships **`docker-compose.traefik-aws.yml`** at the project root — named for what it is: a Traefik-fronted deployment whose Let's Encrypt certificates come from an AWS Route53 DNS challenge. It wires up the app, Postgres, Traefik terminating TLS, and Watchtower for automatic image updates: the stack for a public, domain-fronted deployment.
@@ -143,6 +199,7 @@ With `latest`-tagged images this keeps you current automatically; with pinned ve
 - **Home / LAN, keep it simple** → [Compose: minimal](#compose-minimal), with [Remote Access](remote-access.md) for outside access.
 - **Already have a database** → [Compose: external PostgreSQL](#compose-external-postgresql).
 - **Already have a proxy or tunnel** → [Compose: behind your own proxy](#compose-behind-your-own-proxy).
+- **The internet only through an HTTP proxy** → add [the proxy variables](#compose-behind-an-outbound-http-proxy) to any of these.
 - **Public, domain-fronted, batteries included** → the [Traefik reference stack](#compose-traefik-reference-stack) as-is.
 - Mix freely: external Postgres + your own proxy + Watchtower is a perfectly normal production shape.
 
