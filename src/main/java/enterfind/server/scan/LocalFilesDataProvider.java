@@ -139,8 +139,6 @@ public class LocalFilesDataProvider implements DataProviderInterface {
             return new FileInputStream(resolvedPath.toFile());
         } catch (FileNotFoundException e) {
             throw new NotFoundException("File not found: " + fullPath);
-        } catch (IOException e) {
-            throw new SystemIssueException("Error creating input stream for: " + resolvedPath, e);
         }
     }
 
