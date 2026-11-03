@@ -155,14 +155,7 @@ public class RemoteAccessService {
                 try {
                     boolean connected = client.connectBlocking();
                     if (connected) {
-                        reconnectAttempt = 0;
-                        reconnectBackoff = FAST_BACKOFF_SECONDS;
-                        consecutiveUnreachable = 0;
-                        systemSettingsDao.setSetting("RemoteAccessLastConnected", LocalDateTime.now().toString());
-                        String failure = inviteFailureMessage;
-                        systemSettingsDao.setSetting("RemoteAccessStatusMessage", failure != null ? failure : "");
-                        logger.info("Tunnel connected successfully");
-                        emitConfigUpdate();
+                        onConnected(generation, client);
                     }
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
@@ -176,12 +169,37 @@ public class RemoteAccessService {
         }
     }
 
+    /**
+     * Records a connect, unless the connection has moved on since it opened. connectBlocking()
+     * returns once the socket opens, and a REGISTRATION_REJECTED can be handled on the read thread
+     * before this runs: clearing the status message then wipes the rejection's explanation, and
+     * resetting the backoff undoes the slow rate it chose. Under the lock, so the disconnect handler
+     * has either finished — and the socket is no longer open — or runs after this.
+     */
+    private synchronized void onConnected(long generation, TunnelClient client) {
+        if (generation != connectGeneration || !client.isOpen()) {
+            logger.debug("Connection {} ended before its connect was recorded; leaving the status alone", generation);
+            return;
+        }
+        reconnectAttempt = 0;
+        reconnectBackoff = FAST_BACKOFF_SECONDS;
+        consecutiveUnreachable = 0;
+        systemSettingsDao.setSetting("RemoteAccessLastConnected", LocalDateTime.now().toString());
+        String failure = inviteFailureMessage;
+        systemSettingsDao.setSetting("RemoteAccessStatusMessage", failure != null ? failure : "");
+        logger.info("Tunnel connected successfully");
+        emitConfigUpdate();
+    }
+
     private void stopTunnel() {
         TunnelClient client;
         synchronized (this) {
             cancelReconnect();
             client = tunnelClient;
             tunnelClient = null;
+            // Whatever the stopped connection reports from here on describes a connection nobody is
+            // using, so its callbacks must read as superseded rather than as the current one's.
+            connectGeneration++;
         }
         // Closed outside the lock: the websocket's read thread holds its own lock while it delivers
         // onClose, which reaches scheduleReconnect() and needs ours — closing under our lock deadlocks.
@@ -198,8 +216,11 @@ public class RemoteAccessService {
      * Reports what the tunnel did and picks a retry rate. Reconnect is never suppressed: a refused
      * instance becomes a working one the moment a credential is issued for it, and an operator who
      * has to press a button to discover that is an operator who never finds out.
+     *
+     * <p>Synchronized, like every callback that checks its generation: the check is only worth
+     * anything if no operator action can start a new connection between it and what follows.
      */
-    private void onTunnelDisconnect(long generation, TunnelDisconnect disconnect) {
+    private synchronized void onTunnelDisconnect(long generation, TunnelDisconnect disconnect) {
         if (generation != connectGeneration) {
             // A connection that has already been replaced — typically the one stopped to make way for
             // an invite attempt. Its ending says nothing about the connection that superseded it.
@@ -314,18 +335,38 @@ public class RemoteAccessService {
     }
 
     private void onCredentialUpdate(long generation, String serverId, String token) {
+        TunnelClient reconnect = acceptCredential(generation, serverId, token);
+        // Closed outside the lock, for the reason given in stopTunnel(). It is this connection's own
+        // client, never whatever tunnelClient has become since: by then that may be an invite attempt.
+        if (reconnect != null) {
+            try {
+                reconnect.close();
+            } catch (Exception e) {
+                logger.warn("Error closing tunnel during credential-triggered reconnect", e);
+            }
+        }
+    }
+
+    /**
+     * Applies a REGISTERED and returns the connection to close so it reconnects on the new credential,
+     * or null. Synchronized so that an invite cannot set the stored credential aside between the
+     * generation check and the {@code old == null} test below — a REGISTERED that passed the check
+     * would then read as the invite being redeemed, discard the credential it set aside, and close the
+     * invite attempt as its "reconnect".
+     */
+    private synchronized TunnelClient acceptCredential(long generation, String serverId, String token) {
         if (generation != connectGeneration) {
             // REGISTERED from a connection already replaced — typically the one stopped for an invite
             // attempt, answering its REGISTER a moment late. With the stored credential set aside it
             // would pass for an enrollment and end the invite attempt it has nothing to do with.
             logger.debug("Ignoring REGISTERED from a superseded connection (serverId={})", serverId);
-            return;
+            return null;
         }
         Credential incoming = new Credential(serverId, token);
         Credential old = credential;
 
         if (old != null && old.serverId().equals(serverId) && old.token().equals(token)) {
-            return;
+            return null;
         }
 
         // A serverId we did not ask for is a protocol anomaly and is refused. Moving to a new
@@ -339,7 +380,7 @@ public class RemoteAccessService {
                 ") than the one this instance is using (" + old.serverId() + "). If this persists, "
                 + "use a new invite code.");
             emitConfigUpdate();
-            return;
+            return null;
         }
 
         if (old == null) {
@@ -358,7 +399,8 @@ public class RemoteAccessService {
             logger.info("Token rotated for serverId={}", serverId);
         }
 
-        triggerReconnect();
+        // The generation still matches under the lock, so this is the connection that sent REGISTERED.
+        return tunnelClient;
     }
 
     /**
@@ -368,16 +410,6 @@ public class RemoteAccessService {
         systemSettingsDao.setSetting("RemoteAccessCredential", serializeCredential(incoming));
         credential = incoming;
         systemSettingsDao.setSetting("RemoteAccessStatusMessage", "");
-    }
-
-    private void triggerReconnect() {
-        if (tunnelClient != null) {
-            try {
-                tunnelClient.close();
-            } catch (Exception e) {
-                logger.warn("Error closing tunnel during credential-triggered reconnect", e);
-            }
-        }
     }
 
     private String serializeCredential(Credential c) {
@@ -457,28 +489,34 @@ public class RemoteAccessService {
             if (!enabled) {
                 throw new InvalidArgumentException("An invite code can only be used when enabling remote access");
             }
+            // startTunnel() is a no-op against a live client, so the current connection has to go.
+            // Outside the lock below, which stopTunnel() must not be called under.
+            stopTunnel();
         }
-        // Any operator action supersedes an attempt still in flight, and its explanation.
-        abandonInvite();
+        // One step, so a tunnel callback sees either none of this or all of it — never the stored
+        // credential set aside before the invite attempt it was set aside for exists.
+        synchronized (this) {
+            // Any operator action supersedes an attempt still in flight, and its explanation.
+            abandonInvite();
 
-        systemSettingsDao.setSetting("RemoteAccessEnabled", String.valueOf(enabled));
-        if (enabled) {
-            reconnectAttempt = 0;
-            reconnectBackoff = FAST_BACKOFF_SECONDS;
-            consecutiveUnreachable = 0;
-            if (inviteCode != null) {
-                // startTunnel() is a no-op against a live client, so the current connection has to go.
-                stopTunnel();
-                displacedCredential = credential;
-                credential = null;
-                systemSettingsDao.setSetting("RemoteAccessStatusMessage", "");
-                logger.info("Enrolling with an invite code{}", displacedCredential != null
-                    ? "; setting aside the credential for serverId=" + displacedCredential.serverId() : "");
-                startTunnel(inviteCode.trim(), true);
-            } else {
-                startTunnel();
+            systemSettingsDao.setSetting("RemoteAccessEnabled", String.valueOf(enabled));
+            if (enabled) {
+                reconnectAttempt = 0;
+                reconnectBackoff = FAST_BACKOFF_SECONDS;
+                consecutiveUnreachable = 0;
+                if (inviteCode != null) {
+                    displacedCredential = credential;
+                    credential = null;
+                    systemSettingsDao.setSetting("RemoteAccessStatusMessage", "");
+                    logger.info("Enrolling with an invite code{}", displacedCredential != null
+                        ? "; setting aside the credential for serverId=" + displacedCredential.serverId() : "");
+                    startTunnel(inviteCode.trim(), true);
+                } else {
+                    startTunnel();
+                }
             }
-        } else {
+        }
+        if (!enabled) {
             stopTunnel();
             // The message described a failure to connect; with remote access off there is nothing to
             // connect, so it would otherwise outlive the situation it describes — including a reload.
