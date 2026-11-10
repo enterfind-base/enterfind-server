@@ -121,7 +121,7 @@
 		<dependency>
 			<groupId>software.amazon.awssdk</groupId>
 			<artifactId>s3</artifactId>
-			<version>2.57.8</version>
+			<version>2.57.11</version>
 		</dependency>
 		<!-- The S3 client's HTTP client, declared at compile scope because S3BucketDataProvider configures
 		     its proxy explicitly: the SDK's own lookup ignores https.proxyHost (see EgressProxy). -->
